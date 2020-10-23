@@ -9,7 +9,9 @@ import networkx as nx
 
 def construct_graph(s):
     m = Chem.MolFromSmiles(s)
-    Chem.Kekulize(m)
+    
+    #Chem.Kekulize(m)
+    
     G=nx.Graph()
     l={}
     e={}

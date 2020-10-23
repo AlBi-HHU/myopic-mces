@@ -7,7 +7,7 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1,l1,e1,G2,l2,e2):
+def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
     ILP=pulp.LpProblem("MCES", pulp.LpMaximize)
     nodepairs=[]
     for i in G1.nodes:
@@ -18,22 +18,18 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2):
                             upBound = 1,
                             cat = pulp.LpInteger)
     edgepairs=[]
+    w={}
     for i in G1.edges:
         for j in G2.edges:
             edgepairs.append(tuple([i,j]))
-            c=pulp.LpVariable.dicts('edgepairs', edgepairs, 
+            w[tuple([i,j])]=min(e1[i],e2[j])
+    c=pulp.LpVariable.dicts('edgepairs', edgepairs, 
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
             
-    h1=[] 
-    h2=[]
-    for i in edgepairs:
-        if e1[i[0]]==2.0 and e2[i[1]]==2.0:
-            h1.append(i)
-        else:
-            h2.append(i)
-    ILP += pulp.lpSum([ 2*c[i] for i in h1])+pulp.lpSum([c[i] for i in h2])
+
+    ILP += pulp.lpSum([ w[i]*c[i] for i in edgepairs])
 
     
     
@@ -94,13 +90,7 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2):
             if l1[i]!=l2[j]:
                 ILP+=y[i,j]==0
     
-    #for i in G1.edges:
-    #    for j in G2.edges:
-    #        if e1[i]!=e2[j]:
-    #            ILP+=c[i,j]==0
-    #n1=len(G1.edges)
-    #n2=len(G2.edges)
-    #ILP += pulp.lpSum([ c[i] for i in edgepairs])>=(n1+n2)/2-5
+    ILP +=n-2*pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=10
     
     solver=pulp.PULP_CBC_CMD(msg=False)
     ILP.solve(solver)
