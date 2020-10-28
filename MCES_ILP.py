@@ -92,8 +92,8 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
     
     ILP +=n-2*pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=10
     
-    solver=pulp.PULP_CBC_CMD(msg=False)
-    ILP.solve(solver)
+    #solver=pulp.PULP_CBC_CMD(msg=False)
+    ILP.solve()
     if ILP.status==1:
         return int(ILP.objective.value())
     else:
