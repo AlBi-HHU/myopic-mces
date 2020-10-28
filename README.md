@@ -1,7 +1,17 @@
 # molecule-comparison
 
-Run: python molecule_compyrison.py input-file output-file
+# Dependencies
 
-input-file: Index,Smile1,Smile2
+rdkit
 
-output-file:Index,Time(s),Difference(-1 if >10)
+networkx
+
+pulp
+
+# Run
+
+python molecule_comparison.py input-file output-file
+
+Input-file: Index,Smile1,Smile2
+
+Output-file: Index,Time(s),Difference(-1 if >10)
