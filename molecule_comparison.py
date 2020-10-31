@@ -20,21 +20,16 @@ def MCES(ind,s1,s2):
      G1,l1,e1=construct_graph(s1)
      G2,l2,e2=construct_graph(s2)       
      
-     n=0
-     for i in G1.edges:
-         n=n+e1[i]
-     for i in G2.edges:
-         n=n+e2[i]
      if not apply_filter(G1,G2,l1,l2,e1,e2,10):
         end=time.time()
         total_time=str(end-start)
-        return ind,-1,total_time,n    
+        return ind,-1,total_time   
          
-     res=MCES_ILP(G1,l1,e1,G2,l2,e2,n)
+     res=MCES_ILP(G1,l1,e1,G2,l2,e2)
      end=time.time()
      total_time=str(end-start)
      #print(ind)
-     return ind,res,total_time,n
+     return ind,res,total_time
  
     
 if __name__ == '__main__':
@@ -59,5 +54,5 @@ if __name__ == '__main__':
             if i[1]==-1:
                 out.write(i[0]+","+i[2]+","+str(-1)+"\n")
             else:
-                out.write(i[0]+","+i[2]+","+str(i[3]-2*i[1])+"\n")
+                out.write(i[0]+","+i[2]+","+str(i[1])+"\n")
         out.close()

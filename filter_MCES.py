@@ -46,10 +46,10 @@ def filter1(G1,G2,l1,l2):
         if i not in atom_types1:
             for j in type_map2[i]:
                 difference+=G2.degree[j]
-    return difference
+    return difference/2
 
 def apply_filter(G1,G2,l1,l2,e1,e2,threshold):
-    d=filter1(G1,G2,l1,l2)/2
+    d=filter1(G1,G2,l1,l2)
     if d<threshold:
         return True
     else:

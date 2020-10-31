@@ -7,8 +7,8 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
-    ILP=pulp.LpProblem("MCES", pulp.LpMaximize)
+def MCES_ILP(G1,l1,e1,G2,l2,e2):
+    ILP=pulp.LpProblem("MCES", pulp.LpMinimize)
     nodepairs=[]
     for i in G1.nodes:
         for j in G2.nodes:
@@ -22,11 +22,18 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
     for i in G1.edges:
         for j in G2.edges:
             edgepairs.append(tuple([i,j]))
-            w[tuple([i,j])]=min(e1[i],e2[j])
+            w[tuple([i,j])]=max(e1[i],e2[j])-min(e1[i],e2[j])
+    for i in G1.edges:
+        edgepairs.append(tuple([i,-1]))
+        w[tuple([i,-1])]=e1[i]
+    for j in G2.edges:
+        edgepairs.append(tuple([-1,j]))
+        w[tuple([-1,j])]=e2[j]
     c=pulp.LpVariable.dicts('edgepairs', edgepairs, 
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
+        
             
 
     ILP += pulp.lpSum([ w[i]*c[i] for i in edgepairs])
@@ -54,7 +61,7 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
             ls.append(tuple([i,j]))
         for j in G2.nodes:
             rs.append(tuple([i[0],j]))
-        ILP+=pulp.lpSum([c[k] for k in ls])<=pulp.lpSum([y[k] for k in rs])
+        ILP+=pulp.lpSum([c[k] for k in ls])+c[tuple([i,-1])]==1#
         
     for i in G2.edges:
         ls=[]
@@ -63,7 +70,7 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
             ls.append(tuple([j,i]))
         for j in G1.nodes:
             rs.append(tuple([j,i[1]]))
-        ILP+=pulp.lpSum([c[k] for k in ls])<=pulp.lpSum([y[k] for k in rs])
+        ILP+=pulp.lpSum([c[k] for k in ls])+c[tuple([-1,i])]==1
         
     for i in G1.nodes:
         for j in G2.edges:
@@ -90,11 +97,11 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,n):
             if l1[i]!=l2[j]:
                 ILP+=y[i,j]==0
     
-    ILP +=n-2*pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=10
+    ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=10
     
     #solver=pulp.PULP_CBC_CMD(msg=False)
     ILP.solve()
     if ILP.status==1:
-        return int(ILP.objective.value())
+        return float(ILP.objective.value())
     else:
         return -1
