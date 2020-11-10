@@ -15,12 +15,13 @@ from filter_MCES import apply_filter
 from joblib import Parallel, delayed
 import multiprocessing
 
+
 def MCES(ind,s1,s2):
      start=time.time()
      G1,l1,e1=construct_graph(s1)
      G2,l2,e2=construct_graph(s2)       
      
-     if not apply_filter(G1,G2,l1,l2,e1,e2,10):
+     if not apply_filter(G1,G2,l1,l2,e1,e2,10,ind):
         end=time.time()
         total_time=str(end-start)
         return ind,-1,total_time   
@@ -28,7 +29,6 @@ def MCES(ind,s1,s2):
      res=MCES_ILP(G1,l1,e1,G2,l2,e2)
      end=time.time()
      total_time=str(end-start)
-     #print(ind)
      return ind,res,total_time
  
     
@@ -51,8 +51,5 @@ if __name__ == '__main__':
         
         out=open(F2,"w")
         for i in results:
-            if i[1]==-1:
-                out.write(i[0]+","+i[2]+","+str(-1)+"\n")
-            else:
-                out.write(i[0]+","+i[2]+","+str(i[1])+"\n")
+             out.write(i[0]+","+i[2]+","+str(i[1])+"\n")
         out.close()
