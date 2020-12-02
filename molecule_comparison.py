@@ -7,8 +7,7 @@ Created on Mon Oct  5 17:16:05 2020
 import sys
 import time
 from graph import construct_graph
-from MCES_ILP import MCES_ILP
-import pulp
+from MCES_SAT import MCES_SAT
 import networkx as nx
 from filter_MCES import apply_filter
 
@@ -26,7 +25,7 @@ def MCES(ind,s1,s2):
         total_time=str(end-start)
         return ind,-1,total_time   
          
-     res=MCES_ILP(G1,l1,e1,G2,l2,e2)
+     res=MCES_SAT(G1,l1,e1,G2,l2,e2)
      end=time.time()
      total_time=str(end-start)
      return ind,res,total_time
