@@ -145,9 +145,9 @@ def apply_filter(G1,G2,l1,l2,e1,e2,threshold,ind):
         #print(ind)
         d=filter2(G1,G2,l1,l2,e1,e2)
         if d<=threshold:
-            return True
+            return d
     
-    return False
+    return d
     
             
                                               

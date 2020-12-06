@@ -20,16 +20,16 @@ def MCES(ind,s1,s2,threshold):
      start=time.time()
      G1,l1,e1=construct_graph(s1)
      G2,l2,e2=construct_graph(s2)       
-     
-     if not apply_filter(G1,G2,l1,l2,e1,e2,threshold,ind):
+     d=apply_filter(G1,G2,l1,l2,e1,e2,threshold,ind)
+     if d>threshold:
         end=time.time()
         total_time=str(end-start)
-        return ind,-1,total_time   
+        return ind,d,total_time,2   
          
      res=MCES_ILP(G1,l1,e1,G2,l2,e2,threshold)
      end=time.time()
      total_time=str(end-start)
-     return ind,res,total_time
+     return ind,res[0],total_time,res[1]
  
     
 if __name__ == '__main__':
@@ -57,5 +57,5 @@ if __name__ == '__main__':
         
     out=open(F2,"w")
     for i in results:
-        out.write(i[0]+","+i[2]+","+str(i[1])+"\n")
+        out.write(i[0]+","+i[2]+","+str(i[1])+","+str(i[3])+"\n")
     out.close()

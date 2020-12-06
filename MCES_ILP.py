@@ -102,6 +102,6 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold):
     #solver=pulp.PULP_CBC_CMD(msg=False)
     ILP.solve()
     if ILP.status==1:
-        return float(ILP.objective.value())
+        return float(ILP.objective.value()),1
     else:
-        return -1
+        return 10,2
