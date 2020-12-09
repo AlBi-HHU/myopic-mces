@@ -7,7 +7,7 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold):
+def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold,solver):
     ILP=pulp.LpProblem("MCES", pulp.LpMinimize)
     nodepairs=[]
     for i in G1.nodes:
@@ -100,7 +100,11 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold):
     ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
     
     #solver=pulp.PULP_CBC_CMD(msg=False)
-    ILP.solve()
+    if solver=="default":
+        ILP.solve()
+    else:
+        sol=pulp.getSolver(solver)
+        ILP.solve(sol)
     if ILP.status==1:
         return float(ILP.objective.value()),1
     else:
