@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct  5 17:16:05 2020
-
 @author: seipp
 """
 import sys
@@ -18,15 +17,15 @@ import multiprocessing
 import argparse
 def MCES(ind,s1,s2,threshold,solver):
      start=time.time()
-     G1,l1,e1=construct_graph(s1)
-     G2,l2,e2=construct_graph(s2)       
-     d=apply_filter(G1,G2,l1,l2,e1,e2,threshold,ind)
+     G1=construct_graph(s1)
+     G2=construct_graph(s2)       
+     d=apply_filter(G1,G2,threshold,ind)
      if d>threshold:
         end=time.time()
         total_time=str(end-start)
         return ind,d,total_time,2   
          
-     res=MCES_ILP(G1,l1,e1,G2,l2,e2,threshold,solver)
+     res=MCES_ILP(G1,G2,threshold,solver)
      end=time.time()
      total_time=str(end-start)
      return ind,res[0],total_time,res[1]

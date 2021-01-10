@@ -7,7 +7,7 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold,solver):
+def MCES_ILP(G1,G2,threshold,solver):
     ILP=pulp.LpProblem("MCES", pulp.LpMinimize)
     nodepairs=[]
     for i in G1.nodes:
@@ -22,13 +22,13 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold,solver):
     for i in G1.edges:
         for j in G2.edges:
             edgepairs.append(tuple([i,j]))
-            w[tuple([i,j])]=max(e1[i],e2[j])-min(e1[i],e2[j])
+            w[tuple([i,j])]=max(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])-min(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])
     for i in G1.edges:
         edgepairs.append(tuple([i,-1]))
-        w[tuple([i,-1])]=e1[i]
+        w[tuple([i,-1])]=G1[i[0]][i[1]]["weight"]
     for j in G2.edges:
         edgepairs.append(tuple([-1,j]))
-        w[tuple([-1,j])]=e2[j]
+        w[tuple([-1,j])]=G2[j[0]][j[1]]["weight"]
     c=pulp.LpVariable.dicts('edgepairs', edgepairs, 
                             lowBound = 0,
                             upBound = 1,
@@ -94,7 +94,7 @@ def MCES_ILP(G1,l1,e1,G2,l2,e2,threshold,solver):
             
     for i in G1.nodes:
         for j in G2.nodes:
-            if l1[i]!=l2[j]:
+            if G1.nodes[i]["atom"]!=G2.nodes[j]["atom"]:
                 ILP+=y[i,j]==0
     
     ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold

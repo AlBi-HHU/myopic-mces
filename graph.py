@@ -13,13 +13,8 @@ def construct_graph(s):
     #Chem.Kekulize(m)
     
     G=nx.Graph()
-    l={}
-    e={}
     for atom in m.GetAtoms():
-        G.add_node(atom.GetIdx())
-        l[atom.GetIdx()]=atom.GetSymbol()
+        G.add_node(atom.GetIdx(),atom=atom.GetSymbol())
     for bond in m.GetBonds():
-        G.add_edge(bond.GetBeginAtom().GetIdx(),bond.GetEndAtom().GetIdx())
-        e[tuple([bond.GetBeginAtom().GetIdx(),bond.GetEndAtom().GetIdx()])]=bond.GetBondTypeAsDouble()
-        e[tuple([bond.GetEndAtom().GetIdx(),bond.GetBeginAtom().GetIdx()])]=bond.GetBondTypeAsDouble()
-    return G,l,e
+        G.add_edge(bond.GetBeginAtom().GetIdx(),bond.GetEndAtom().GetIdx(),weight=bond.GetBondTypeAsDouble())
+    return G
