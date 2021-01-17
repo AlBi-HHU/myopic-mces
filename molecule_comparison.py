@@ -16,15 +16,43 @@ import multiprocessing
 
 import argparse
 def MCES(ind,s1,s2,threshold,solver):
+     """ 
+     Calculates the distance between two molecules
+     
+     Parameters
+     ----------
+     s1 : str 
+         SMILE of the first molecule
+     s2 : str 
+         SMILE of the second molecule
+     threshold : int
+         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold
+     solver: string
+         ILP-solver used for solving MCES. Example:GUROBI_CMD
+         
+     Returns:
+     -------
+     float
+         Distance between the molecules
+     float
+         Time taken for the calculation
+     int
+         Type of Distance:
+             1 : Exact Distance
+             2 : Lower bound (If the exact distance is above the threshold)
+     
+     """
      start=time.time()
+     #construct graph for both smiles. 
      G1=construct_graph(s1)
-     G2=construct_graph(s2)       
-     d=apply_filter(G1,G2,threshold,ind)
+     G2=construct_graph(s2)
+     # filter out if distance is above the threshold 
+     d=apply_filter(G1,G2,threshold)
      if d>threshold:
         end=time.time()
         total_time=str(end-start)
         return ind,d,total_time,2   
-         
+     # calculate MCES
      res=MCES_ILP(G1,G2,threshold,solver)
      end=time.time()
      total_time=str(end-start)
