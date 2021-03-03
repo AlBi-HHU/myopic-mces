@@ -39,7 +39,8 @@ def MCES_ILP(G1,G2,threshold,solver):
     nodepairs=[]
     for i in G1.nodes:
         for j in G2.nodes:
-            nodepairs.append(tuple([i,j]))
+            if G1.nodes[i]["atom"]==G2.nodes[j]["atom"]:
+                nodepairs.append(tuple([i,j]))
     y=pulp.LpVariable.dicts('nodepairs', nodepairs, 
                             lowBound = 0,
                             upBound = 1,
@@ -49,8 +50,9 @@ def MCES_ILP(G1,G2,threshold,solver):
     w={}
     for i in G1.edges:
         for j in G2.edges:
-            edgepairs.append(tuple([i,j]))
-            w[tuple([i,j])]=max(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])-min(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])
+            if (G1.nodes[i[0]]["atom"]==G2.nodes[j[0]]["atom"] and G1.nodes[i[1]]["atom"]==G2.nodes[j[1]]["atom"]) or (G1.nodes[i[1]]["atom"]==G2.nodes[j[0]]["atom"] and G1.nodes[i[0]]["atom"]==G2.nodes[j[1]]["atom"]):
+                edgepairs.append(tuple([i,j]))
+                w[tuple([i,j])]=max(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])-min(G1[i[0]][i[1]]["weight"],G2[j[0]][j[1]]["weight"])
     
     #variables for not mapping an edge
     for i in G1.edges:
@@ -75,14 +77,16 @@ def MCES_ILP(G1,G2,threshold,solver):
     for i in G1.nodes:
         h=[]
         for j in G2.nodes:
-            h.append(tuple([i,j]))
+            if G1.nodes[i]["atom"]==G2.nodes[j]["atom"]:
+                h.append(tuple([i,j]))
         ILP+=pulp.lpSum([y[k] for k in h])<=1
       
     #Every node in G1 can only be mapped to at most one in G1    
     for i in G2.nodes:
         h=[]
         for j in G1.nodes:
-            h.append(tuple([j,i]))
+            if G1.nodes[j]["atom"]==G2.nodes[i]["atom"]:
+                h.append(tuple([j,i]))
         ILP+=pulp.lpSum([y[k] for k in h])<=1
     
     #Every edge in G1 has to be mapped to an edge in G2 or the variable for not mapping has to be 1
@@ -90,9 +94,8 @@ def MCES_ILP(G1,G2,threshold,solver):
         ls=[]
         rs=[]
         for j in G2.edges:
-            ls.append(tuple([i,j]))
-        for j in G2.nodes:
-            rs.append(tuple([i[0],j]))
+            if (G1.nodes[i[0]]["atom"]==G2.nodes[j[0]]["atom"] and G1.nodes[i[1]]["atom"]==G2.nodes[j[1]]["atom"]) or (G1.nodes[i[1]]["atom"]==G2.nodes[j[0]]["atom"] and G1.nodes[i[0]]["atom"]==G2.nodes[j[1]]["atom"]):
+                ls.append(tuple([i,j]))
         ILP+=pulp.lpSum([c[k] for k in ls])+c[tuple([i,-1])]==1
      
     #Every edge in G2 has to be mapped to an edge in G1 or the variable for not mapping has to be 1    
@@ -100,9 +103,8 @@ def MCES_ILP(G1,G2,threshold,solver):
         ls=[]
         rs=[]
         for j in G1.edges:
-            ls.append(tuple([j,i]))
-        for j in G1.nodes:
-            rs.append(tuple([j,i[1]]))
+            if (G1.nodes[j[0]]["atom"]==G2.nodes[i[0]]["atom"] and G1.nodes[j[1]]["atom"]==G2.nodes[i[1]]["atom"]) or (G1.nodes[j[1]]["atom"]==G2.nodes[i[0]]["atom"] and G1.nodes[j[0]]["atom"]==G2.nodes[i[1]]["atom"]):
+                ls.append(tuple([j,i]))
         ILP+=pulp.lpSum([c[k] for k in ls])+c[tuple([-1,i])]==1
     
     #The mapping of the edges has to match the mapping of the nodes    
@@ -113,8 +115,14 @@ def MCES_ILP(G1,G2,threshold,solver):
                 if tuple([tuple([i,k]),j]) in c:
                     ls.append(tuple([tuple([i,k]),j]))
                 else:
-                    ls.append(tuple([tuple([k,i]),j]))
-            ILP+=pulp.lpSum([c[k] for k in ls])<=y[tuple([i,j[0]])]+y[tuple([i,j[1]])]
+                    if  tuple([tuple([k,i]),j]) in c:
+                        ls.append(tuple([tuple([k,i]),j]))
+            rs=[]
+            if G1.nodes[i]["atom"]==G2.nodes[j[0]]["atom"]:
+                rs.append(tuple([i,j[0]]))
+            if G1.nodes[i]["atom"]==G2.nodes[j[1]]["atom"]:
+                rs.append(tuple([i,j[1]]))
+            ILP+=pulp.lpSum([c[k] for k in ls])<=pulp.lpSum([y[k] for k in rs])
     
     
     for i in G2.nodes:
@@ -124,15 +132,15 @@ def MCES_ILP(G1,G2,threshold,solver):
                 if tuple([j,tuple([i,k])]) in c:
                     ls.append(tuple([j,tuple([i,k])]))
                 else:
-                    ls.append(tuple([j,tuple([k,i])]))
-            ILP+=pulp.lpSum([c[k] for k in ls])<=y[tuple([j[0],i])]+y[tuple([j[1],i])]
-    
-    #nodes can only be mapped if they represent the same atom
-    for i in G1.nodes:
-        for j in G2.nodes:
-            if G1.nodes[i]["atom"]!=G2.nodes[j]["atom"]:
-                ILP+=y[i,j]==0
-    
+                    if tuple([j,tuple([k,i])]) in c:
+                        ls.append(tuple([j,tuple([k,i])]))
+            rs=[]
+            if G2.nodes[i]["atom"]==G1.nodes[j[0]]["atom"]:
+                rs.append(tuple([j[0],i]))
+            if G2.nodes[i]["atom"]==G1.nodes[j[1]]["atom"]:
+                rs.append(tuple([j[1],i]))                    
+            ILP+=pulp.lpSum([c[k] for k in ls])<=pulp.lpSum(y[k] for k in rs)
+       
     #constraint for the threshold
     ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
     
