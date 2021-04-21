@@ -142,7 +142,8 @@ def MCES_ILP(G1,G2,threshold,solver):
             ILP+=pulp.lpSum([c[k] for k in ls])<=pulp.lpSum(y[k] for k in rs)
        
     #constraint for the threshold
-    ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
+    if threshold!=-1:
+        ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
     
     #solve the ILP
     if solver=="default":

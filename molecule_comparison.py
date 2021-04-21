@@ -46,7 +46,12 @@ def MCES(ind,s1,s2,threshold,solver):
      #construct graph for both smiles. 
      G1=construct_graph(s1)
      G2=construct_graph(s2)
-     # filter out if distance is above the threshold 
+     # filter out if distance is above the threshold
+     if threshold==-1:
+         res=MCES_ILP(G1,G2,threshold,solver)
+         end=time.time()
+         total_time=str(end-start)
+         return ind,res[0],total_time,res[1]
      d=apply_filter(G1,G2,threshold)
      if d>threshold:
         end=time.time()
