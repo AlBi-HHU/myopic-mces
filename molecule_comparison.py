@@ -21,17 +21,22 @@ def MCES(ind,s1,s2,threshold,solver):
      
      Parameters
      ----------
+     ind : int
+         index
      s1 : str 
          SMILE of the first molecule
      s2 : str 
          SMILE of the second molecule
      threshold : int
-         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold
+         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
+         If set to -1 the exact disatnce is always calculated.
      solver: string
          ILP-solver used for solving MCES. Example:GUROBI_CMD
          
      Returns:
      -------
+     int
+         index
      float
          Distance between the molecules
      float
