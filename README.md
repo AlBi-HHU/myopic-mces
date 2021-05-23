@@ -21,9 +21,10 @@ Run from commandline:
 python molecule_comparison.py input-file output-file
 ```
 
-#Optinal Arguments
-
+# Optinal Arguments
+```
 --threshold  int    Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
          	        If set to -1 the exact disatnce is always calculated.
 
 --solver string     Solver used for solving the ILP. Examples:'CPLEX_CMD','GLPK_CMD','CPLEX_CMD','GUROBI_CMD'
+```
