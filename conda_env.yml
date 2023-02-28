@@ -1,0 +1,11 @@
+name: myopic_mces
+channels:
+  - conda-forge
+dependencies:
+  - rdkit
+  - networkx
+  - pulp
+  - scipy
+  - pip
+  - pip:
+      - joblib
