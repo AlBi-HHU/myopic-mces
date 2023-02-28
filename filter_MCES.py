@@ -8,21 +8,21 @@ Created on Sat Oct 17 17:59:05 2020
 import networkx as nx
 
 def filter1(G1,G2):
-    """ 
+    """
      Finds a lower bound for the distance based on degree
-     
+
      Parameters
      ----------
-     G1 : networkx.classes.graph.Graph 
+     G1 : networkx.classes.graph.Graph
          Graph representing the first molecule.
-     G2 : networkx.classes.graph.Graph 
+     G2 : networkx.classes.graph.Graph
          Graph representing the second molecule.
-         
+
      Returns:
      -------
      float
          Lower bound for the distance between the molecules
-     
+
     """
     #Find all occuring atom types and partition by type
     atom_types1=[]
@@ -31,8 +31,8 @@ def filter1(G1,G2):
             atom_types1.append(G1.nodes[i]["atom"])
     type_map1={}
     for i in atom_types1:
-        type_map1[i]=list(filter(lambda x: i==G1.nodes[x]["atom"],G1.nodes))    
-        
+        type_map1[i]=list(filter(lambda x: i==G1.nodes[x]["atom"],G1.nodes))
+
     atom_types2=[]
     for i in G2.nodes:
         if G2.nodes[i]["atom"] not in atom_types2:
@@ -74,25 +74,25 @@ def filter1(G1,G2):
     return difference/2
 
 def get_cost(G1,G2,i,j):
-    """ 
+    """
      Calculates the cost for mapping node i to j based on neighborhood
-     
+
      Parameters
      ----------
-     G1 : networkx.classes.graph.Graph 
+     G1 : networkx.classes.graph.Graph
          Graph representing the first molecule.
-     G2 : networkx.classes.graph.Graph 
+     G2 : networkx.classes.graph.Graph
          Graph representing the second molecule.
      i : int
          Node of G1
      j : int
          Node of G2
-         
+
      Returns:
      -------
      float
          Cost of mapping i to j
-     
+
     """
     #Find all occuring atom types in neighborhood
     atom_types1=[]
@@ -101,9 +101,9 @@ def get_cost(G1,G2,i,j):
             atom_types1.append(G1.nodes[k]["atom"])
     type_map1={}
     for k in atom_types1:
-        type_map1[k]=list(filter(lambda x: k==G1.nodes[x]["atom"],G1.neighbors(i))) 
-  
-        
+        type_map1[k]=list(filter(lambda x: k==G1.nodes[x]["atom"],G1.neighbors(i)))
+
+
     atom_types2=[]
     for k in G2.neighbors(j):
         if G2.nodes[k]["atom"] not in atom_types2:
@@ -141,33 +141,33 @@ def get_cost(G1,G2,i,j):
     return difference
 
 def filter2(G1,G2):
-    """ 
+    """
      Finds a lower bound for the distance based on neighborhood
-     
+
      Parameters
      ----------
-     G1 : networkx.classes.graph.Graph 
+     G1 : networkx.classes.graph.Graph
          Graph representing the first molecule.
-     G2 : networkx.classes.graph.Graph 
+     G2 : networkx.classes.graph.Graph
          Graph representing the second molecule.
-         
+
      Returns:
      -------
      float
          Lower bound for the distance between the molecules
-     
+
     """
     # Find all occuring atom types
     atom_types1=[]
     for i in G1.nodes:
         if G1.nodes[i]["atom"] not in atom_types1:
             atom_types1.append(G1.nodes[i]["atom"])
-       
+
     atom_types2=[]
     for i in G2.nodes:
         if G2.nodes[i]["atom"] not in atom_types2:
             atom_types2.append(G2.nodes[i]["atom"])
-    
+
     atom_types=atom_types1
 
     for i in atom_types2:
@@ -205,24 +205,24 @@ def filter2(G1,G2):
                 G.add_node(tuple([2,-j]))
                 for k in nodes1:
                     G.add_edge(tuple([1,k]),tuple([2,-j]),weight=sum([G1[l][k]["weight"] for l in G1.neighbors(k)])/2)
-        #Solve minimum weight full matching 
+        #Solve minimum weight full matching
         h=nx.bipartite.minimum_weight_full_matching(G)
         #Add weight of the matching
         for k in h:
             if k[0]==1:
                 res=res+G[k][h[k]]["weight"]
-            
+
     return res
 
 def apply_filter(G1,G2,threshold,compute_both_bounds=True):
     """
      Finds a lower bound for the distance
-     
+
      Parameters
      ----------
-     G1 : networkx.classes.graph.Graph 
+     G1 : networkx.classes.graph.Graph
          Graph representing the first molecule.
-     G2 : networkx.classes.graph.Graph 
+     G2 : networkx.classes.graph.Graph
          Graph representing the second molecule.
      threshold : int
          Threshold for the comparison. We want to find a lower bound that is higher than the threshold
