@@ -3,7 +3,6 @@
 Created on Mon Oct  5 17:16:05 2020
 @author: seipp
 """
-import sys
 import time
 from graph import construct_graph
 from MCES_ILP import MCES_ILP
@@ -118,7 +117,6 @@ if __name__ == '__main__':
     f = open(F, "r")
     solver = args.solver
 
-    print('reading inputs', file=sys.stderr)
     inputs = []
     for line in f:
         args = line.split(",")
