@@ -4,18 +4,20 @@
 
 Input and Output file are in csv format. Every line in the input-file is one comparison:
 
-Input-file: index,SMILES1,SMILES2
+input-file: `index,SMILES1,SMILES2`
 
-Output-file: index, time taken, myopic MCES distance, status (1 if exact distance, 2-5 if lower bound)
+output-file: `index,time taken,myopic MCES distance,status (1 if exact distance, 2-5 if lower bound)`
 
-Run from commandline:
+Run from the command line:
 ```bash
 python molecule_comparison.py input-file output-file
 ```
 
+See [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html) on how to configure ILP solvers. By default, the PuLP-provided COIN-OR solver will be used.
+
 ## Optional Arguments
 
-### General options
+General options
 ```
 --threshold  int         Threshold for the comparison.
                          Exact distance is only calculated if the distance is lower than the threshold.
@@ -27,7 +29,7 @@ python molecule_comparison.py input-file output-file
                          By default this is set to the number of (logical) CPU cores.
 ```
 
-### Options for the ILP solver
+Options for the ILP solver
 ```
 --solver_onethreaded    Limit ILP solver to one thread, likely resulting in faster
                         performance with parallel computations (not available for all solvers).
@@ -36,7 +38,7 @@ python molecule_comparison.py input-file output-file
 
 ```
 
-### Experimental options for myopic MCES distance computation
+Experimental options for myopic MCES distance computation
 ```
 --no_ilp_threshold     If set, do not add threshold as constraint to ILP,
                        resulting in longer runtimes and potential violations of the triangle equation.
