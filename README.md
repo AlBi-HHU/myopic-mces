@@ -6,7 +6,7 @@ Input and Output file are in csv format. Every line in the input-file is one com
 
 input-file: `index,SMILES1,SMILES2`
 
-output-file: `index,time taken,myopic MCES distance,status (1 if exact distance, 2-5 if lower bound)`
+output-file: `index,time taken,myopic MCES distance,status (1 if exact distance, 2/4 if lower bound)`
 
 Run from the command line:
 ```bash
@@ -40,10 +40,12 @@ Options for the ILP solver
 
 Experimental options for myopic MCES distance computation
 ```
---no_ilp_threshold     If set, do not add threshold as constraint to ILP,
-                       resulting in longer runtimes and potential violations of the triangle equation.
---no_force_both_bounds If set, the first applicable lower bound will be taken instead of
-                       always computing both lower bounds.
+--no_ilp_threshold           If set, do not add threshold as constraint to ILP,
+                             resulting in longer runtimes and potential violations of the triangle equation.
+
+--choose_bound_dynamically   If set, a potentially weaker but faster lower bound will be computed and used
+                             when this bound is already greater than the threshold. By default (without
+                             this option), always the strongest lower bound will be computed and used.
 ```
 
 

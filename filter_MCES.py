@@ -214,7 +214,7 @@ def filter2(G1,G2):
 
     return res
 
-def apply_filter(G1,G2,threshold,compute_both_bounds=True):
+def apply_filter(G1,G2,threshold,always_stronger_bound=True):
     """
      Finds a lower bound for the distance
 
@@ -226,8 +226,8 @@ def apply_filter(G1,G2,threshold,compute_both_bounds=True):
          Graph representing the second molecule.
      threshold : int
          Threshold for the comparison. We want to find a lower bound that is higher than the threshold
-     compute_both_bounds : bool
-         Always compute both lower bounds
+     always_stronger_bound : bool
+         if true, always compute and use the second stronger bound
 
 
 
@@ -236,17 +236,12 @@ def apply_filter(G1,G2,threshold,compute_both_bounds=True):
      float
          Lower bound for the distance between the molecules
      int
-         Which lower bound was chosen: 3 - first lower bound, 4 - second lower bound, 5 - both bounds are equal
+         Which lower bound was chosen: 2 - depending on threshold, 4 - second lower bound
 
     """
-    if compute_both_bounds:
-        d1=filter1(G1,G2)
-        d2=filter2(G1,G2)
-        if (d1 > d2):
-            return d1, 3
-        elif (d2 > d1):
-            return d2, 4
-        return d1, 5
+    if always_stronger_bound:
+        d=filter2(G1,G2)
+        return d, 4
     else:
         #calculate first lower bound
         d=filter1(G1,G2)
@@ -257,4 +252,3 @@ def apply_filter(G1,G2,threshold,compute_both_bounds=True):
                 return d, 2
 
         return d, 2
- 

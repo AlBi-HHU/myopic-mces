@@ -16,7 +16,7 @@ import multiprocessing
 import argparse
 
 
-def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=False, compute_both_bounds=True):
+def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=False, always_stronger_bound=True):
     """
     Calculates the distance between two molecules
 
@@ -37,8 +37,8 @@ def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=Fal
         additional options to pass to solvers. Example: threads=1 for better multi-threaded performance
     no_ilp_threshold: bool
         if true, always return exact distance even if it is below the threshold (slower)
-    compute_both_bounds: bool
-        if true, always compute both lower bounds
+    always_stronger_bound: bool
+        if true, always compute and use the second stronger bound
 
     Returns:
     -------
@@ -51,10 +51,8 @@ def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=Fal
     int
         Type of Distance:
             1 : Exact Distance
-            2 : Lower bound (if the exact distance is above the threshold)
-            3 : Lower bound (first lower bound was chosen)
-            4 : Lower bound (second lower bound was chosen)
-            5 : Lower bound (both bounds are equal)
+            2 : Lower bound (if the exact distance is above the threshold; bound chosen dynamically)
+            4 : Lower bound (second lower bound was used)
 
     """
     start = time.time()
@@ -67,7 +65,7 @@ def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=Fal
         end = time.time()
         total_time = str(end-start)
         return ind, res[0], total_time, res[1]
-    d, filter_id = apply_filter(G1, G2, threshold, compute_both_bounds=compute_both_bounds)
+    d, filter_id = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
     if d > threshold:
         end = time.time()
         total_time = str(end-start)
@@ -89,9 +87,10 @@ if __name__ == '__main__':
     parser.add_argument("--no_ilp_threshold", action="store_true",
                         help="(experimental) if set, do not add threshold as constraint to ILP, "
                         "resulting in longer runtimes and potential violations of the triangle equation")
-    parser.add_argument("--no_force_both_bounds", action="store_true",
-                        help="if this is set, the first applicable lower bound will be taken instead of "
-                        "always computing both lower bounds")
+    parser.add_argument("--choose_bound_dynamically", action="store_true",
+                        help="if this is set, compute and use potentially weaker but faster lower bound if "
+                        "already greater than the threshold. Otherwise (default), the strongest lower bound "
+                        "is always computed and used")
     parser.add_argument("--solver", type=str, default="default",
                         action="store", help="Solver for the ILP. example:CPLEX_CMD")
     parser.add_argument("--solver_onethreaded", action="store_true",
@@ -107,7 +106,7 @@ if __name__ == '__main__':
 
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
-                                   compute_both_bounds=not args.no_force_both_bounds)
+                                   always_stronger_bound=not args.choose_bound_dynamically)
     if args.solver_onethreaded:
         additional_mces_options['solver_options']['threads'] = 1
     if args.solver_no_msg:
