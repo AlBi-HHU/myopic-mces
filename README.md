@@ -1,5 +1,7 @@
 # Computation of myopic MCES distances
 
+Implementation of myopic MCES distance computation, see the preprint at [doi:10.1101/2023.03.27.534311](https://doi.org/10.1101/2023.03.27.534311) for details.
+
 ## Usage
 
 Input and Output file are in csv format. Every line in the input-file is one comparison:
