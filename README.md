@@ -10,9 +10,15 @@ input-file: `index,SMILES1,SMILES2`
 
 output-file: `index,time taken,myopic MCES distance,status (1 if exact distance, 2/4 if lower bound)`
 
-Run from the command line:
+Run from the command line in the `src` directory:
 ```bash
-python myopic_mces.py input-file output-file
+python -m myopic_mces.myopic_mces input-file output-file
+```
+
+Alternatively, the `myopic-mces` can be downloaded via pip and executed directly:
+```bash
+pip install myopic-mces
+myopic-mces input-file output-file
 ```
 
 See [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html) on how to configure ILP solvers. By default, the PuLP-provided COIN-OR solver will be used.
@@ -84,11 +90,7 @@ A typical installation time should not exceed 5 minutes, mostly depending on the
 The example provided in [example/example_data.csv](example/example_data.csv) can be run with:
 
 ```bash
-python myopic_mces.py example/example_data.csv example/example_data_out.csv
-```
-
-Alternatively, if the package was installed via pip:
-```bash
+pip install myopic-mces
 myopic_mces example/example_data.csv example/example_data_out.csv
 ```
 
