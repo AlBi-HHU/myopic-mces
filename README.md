@@ -15,7 +15,7 @@ Run from the command line in the `src` directory:
 python -m myopic_mces.myopic_mces input-file output-file
 ```
 
-Alternatively, the `myopic-mces` can be downloaded via pip and executed directly:
+Alternatively, the `myopic-mces`-package can be downloaded via pip and executed directly:
 ```bash
 pip install myopic-mces
 myopic-mces input-file output-file
