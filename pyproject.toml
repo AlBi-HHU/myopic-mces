@@ -1,7 +1,6 @@
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
 [project]
 name = "myopic_mces"
 version = "1.0.0"
@@ -21,10 +20,8 @@ dependencies = [
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
 ]
-
 [project.scripts]
 myopic_mces = "myopic_mces.myopic_mces:main"
-
 [project.urls]
 "Homepage" = "https://github.com/AlBi-HHU/myopic-mces"
 "Bug Tracker" = "https://github.com/AlBi-HHU/myopic-mces/issues"
