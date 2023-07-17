@@ -4,17 +4,14 @@ Created on Mon Oct  5 17:16:05 2020
 @author: seipp
 """
 import time
-from graph import construct_graph
-from MCES_ILP import MCES_ILP
 import pulp
 import networkx as nx
-from filter_MCES import apply_filter
-
 from joblib import Parallel, delayed
 import multiprocessing
-
 import argparse
-
+from myopic_mces.graph import construct_graph
+from myopic_mces.MCES_ILP import MCES_ILP
+from myopic_mces.filter_MCES import apply_filter
 
 def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=False, always_stronger_bound=True):
     """
@@ -76,8 +73,7 @@ def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=Fal
     total_time = str(end-start)
     return ind, res[0], total_time, res[1]
 
-if __name__ == '__main__':
-
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "input", help="input file in the format: id,smiles1,smiles2")
@@ -132,3 +128,6 @@ if __name__ == '__main__':
     for i in results:
         out.write(i[0]+","+i[2]+","+str(i[1])+","+str(i[3])+"\n")
     out.close()
+
+if __name__ == '__main__':
+    main()

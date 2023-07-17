@@ -12,7 +12,7 @@ output-file: `index,time taken,myopic MCES distance,status (1 if exact distance,
 
 Run from the command line:
 ```bash
-python molecule_comparison.py input-file output-file
+python myopic_mces.py input-file output-file
 ```
 
 See [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html) on how to configure ILP solvers. By default, the PuLP-provided COIN-OR solver will be used.
@@ -72,6 +72,11 @@ conda env create -f conda_env.yml
 conda activate myopic_mces
 ```
 
+A PyPI-package is also available, install via:
+```bash
+pip install myopic_mces
+```
+
 A typical installation time should not exceed 5 minutes, mostly depending on the internet connection speed to download all required packages.
 
 ## Example data
@@ -79,7 +84,12 @@ A typical installation time should not exceed 5 minutes, mostly depending on the
 The example provided in [example/example_data.csv](example/example_data.csv) can be run with:
 
 ```bash
-python molecule_comparison.py example/example_data.csv example/example_data_out.csv
+python myopic_mces.py example/example_data.csv example/example_data_out.csv
+```
+
+Alternatively, if the package was installed via pip:
+```bash
+myopic_mces example/example_data.csv example/example_data_out.csv
 ```
 
 Typical runtime is about 10s on Windows 10 with all default options, running on 4 cores with 8GB RAM. Exemplary output is provided in [example/example_data_out.csv](example/example_data_out.csv).

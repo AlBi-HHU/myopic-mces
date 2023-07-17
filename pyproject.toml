@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "myopic_mces"
+version = "1.0.4"
+authors = [
+  { name="Jan Seipp" },
+  { name="Fleming Kretschmer" },
+]
+description = "A package for computation of the myopic MCES distance"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.6"
+classifiers = [
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: OS Independent",
+]
+dependencies = [
+             "rdkit >= 2022.09.5",
+             "networkx >= 3.0",
+             "pulp >= 2.7.0",
+             "scipy >= 1.10.1",
+             "joblib >= 1.2.0",
+]
+
+[project.scripts]
+myopic_mces = "myopic_mces.myopic_mces:main"
+
+[project.urls]
+"Homepage" = "https://github.com/AlBi-HHU/myopic-mces"
+"Bug Tracker" = "https://github.com/AlBi-HHU/myopic-mces/issues"
+"Publication" = "https://doi.org/10.1101/2023.03.27.534311"
