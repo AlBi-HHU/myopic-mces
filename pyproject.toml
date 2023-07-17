@@ -1,6 +1,7 @@
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
 [project]
 name = "myopic_mces"
 version = "1.0.0"
