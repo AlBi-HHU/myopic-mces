@@ -100,7 +100,7 @@ def main():
         inputs = [line.strip().split(',')[:3] for line in in_handle]
 
     if num_jobs > 1:
-        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
+        results = Parallel(n_jobs=num_jobs, verbose=5)(
             delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
     else:
         results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
