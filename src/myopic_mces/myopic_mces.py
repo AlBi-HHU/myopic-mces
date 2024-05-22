@@ -78,7 +78,7 @@ def main():
     parser.add_argument(
         "input", help="input file in the format: id,smiles1,smiles2")
     parser.add_argument("output", help="output file")
-    parser.add_argument("--threshold", type=int, default=10,
+    parser.add_argument("--threshold", type=float, default=10.,
                         action="store", help="threshold for the distance")
     parser.add_argument("--no_ilp_threshold", action="store_true",
                         help="(experimental) if set, do not add threshold as constraint to ILP, "
