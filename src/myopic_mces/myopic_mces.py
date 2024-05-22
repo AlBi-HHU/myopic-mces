@@ -4,8 +4,6 @@ Created on Mon Oct  5 17:16:05 2020
 @author: seipp
 """
 import time
-import pulp
-import networkx as nx
 from joblib import Parallel, delayed
 import multiprocessing
 import argparse
@@ -13,21 +11,21 @@ from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
 from myopic_mces.filter_MCES import apply_filter
 
-def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=False, always_stronger_bound=True):
+def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False, always_stronger_bound=True):
     """
     Calculates the distance between two molecules
 
     Parameters
     ----------
-    ind : int
-        index
-    s1 : str
+    smiles1 : str
         SMILES of the first molecule
-    s2 : str
+    smiles2 : str
         SMILES of the second molecule
-    threshold : int
+    threshold : float
         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
-        If set to -1 the exact disatnce is always calculated.
+        If set to -1 the exact distance is always calculated.
+    i : int
+        index, mainly for parallelization
     solver: string
         ILP-solver used for solving MCES. Example:CPLEX_CMD
     solver_options: dict
@@ -54,24 +52,16 @@ def MCES(ind, s1, s2, threshold, solver, solver_options={}, no_ilp_threshold=Fal
     """
     start = time.time()
     # construct graph for both smiles.
-    G1 = construct_graph(s1)
-    G2 = construct_graph(s2)
-    # filter out if distance is above the threshold
-    if threshold == -1:
-        res = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options, no_ilp_threshold=no_ilp_threshold)
-        end = time.time()
-        total_time = str(end-start)
-        return ind, res[0], total_time, res[1]
-    d, filter_id = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
-    if d > threshold:
-        end = time.time()
-        total_time = str(end-start)
-        return ind, d, total_time, filter_id
+    G1 = construct_graph(smiles1)
+    G2 = construct_graph(smiles2)
+    if threshold != -1:         # with `-1` always compute exact distance
+        # filter out if distance is above the threshold
+        distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
+        if distance > threshold:
+            return i, distance, time.time() - start, compute_mode
     # calculate MCES
-    res = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options, no_ilp_threshold=no_ilp_threshold)
-    end = time.time()
-    total_time = str(end-start)
-    return ind, res[0], total_time, res[1]
+    distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options, no_ilp_threshold=no_ilp_threshold)
+    return i, distance, time.time() - start, compute_mode
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,7 +76,7 @@ def main():
     parser.add_argument("--choose_bound_dynamically", action="store_true",
                         help="if this is set, compute and use potentially weaker but faster lower bound if "
                         "already greater than the threshold. Otherwise (default), the strongest lower bound "
-                        "is always computed and used")
+                        "is always computed and used. Enabling this can lead to massive speedups.")
     parser.add_argument("--solver", type=str, default="default",
                         action="store", help="Solver for the ILP. example:CPLEX_CMD")
     parser.add_argument("--solver_onethreaded", action="store_true",
@@ -98,8 +88,6 @@ def main():
                         "By default this is set to the number of (logical) CPU cores.")
     args = parser.parse_args()
 
-    threshold = args.threshold
-
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically)
@@ -107,27 +95,19 @@ def main():
         additional_mces_options['solver_options']['threads'] = 1
     if args.solver_no_msg:
         additional_mces_options['solver_options']['msg'] = False
-    F = args.input
-    F2 = args.output
-    f = open(F, "r")
-    solver = args.solver
 
-    inputs = []
-    for line in f:
-        args = line.split(",")
-        inputs.append(tuple([args[0], args[1], args[2]]))
-    f.close()
+    with open(args.input) as in_handle:
+        inputs = [line.strip().split(',')[:3] for line in in_handle]
 
     if num_jobs > 1:
         results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
-            delayed(MCES)(i[0], i[1], i[2], threshold, solver, **additional_mces_options) for i in inputs)
+            delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
     else:
-        results = [MCES(i[0], i[1], i[2], threshold, solver, **additional_mces_options) for i in inputs]
+        results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
 
-    out = open(F2, "w")
-    for i in results:
-        out.write(i[0]+","+i[2]+","+str(i[1])+","+str(i[3])+"\n")
-    out.close()
+    with open(args.output, 'w') as out_handle:
+        for ind, distance, duration, compute_mode in results:
+            out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
 
 if __name__ == '__main__':
     main()
