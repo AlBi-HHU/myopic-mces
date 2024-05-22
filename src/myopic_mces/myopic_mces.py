@@ -119,7 +119,7 @@ def main():
     f.close()
 
     if num_jobs > 1:
-        results = Parallel(n_jobs=num_jobs, verbose=5)(
+        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
             delayed(MCES)(i[0], i[1], i[2], threshold, solver, **additional_mces_options) for i in inputs)
     else:
         results = [MCES(i[0], i[1], i[2], threshold, solver, **additional_mces_options) for i in inputs]
