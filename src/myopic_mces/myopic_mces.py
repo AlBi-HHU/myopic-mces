@@ -74,18 +74,17 @@ def hdf5_input(file_path):
         smiles_dict = {i: s for i, s in enumerate(smiles)}
         indices = f['computation_indices']
         for i in tqdm(range(len(indices)), total=len(indices)):
-            row = indices[i]
-            id_ row[0]
-            smiles1 = smiles_dict[row[1]]
-            smiles2 = smiles_dict[row[2]]
+            id_, smiles1_index, smiles2_index = indices[i]
+            smiles1 = smiles_dict[smiles1_index]
+            smiles2 = smiles_dict[smiles2_index]
             inputs.append((id_, smiles1, smiles2))
-    print(f'done, took {time.time() - t0:.1f} seconds')
+    print(f'done, took {(time.time() - t0) / 60:.1f}min')
     return inputs
 
 def hdf5_output(results, file_path, write_times=True, write_modes=True, args={}):
-    # for ind, distance, duration, compute_mode in results:
     import h5py
     from tqdm import tqdm
+    import numpy as np
     print('writing hdf5 output')
     t0 = time.time()
     with h5py.File(file_path, 'a') as f:
@@ -93,22 +92,18 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
         print('first making sure that indices are in the same order...', end=' ')
         assert list(indices[:, 0]) == [r[0] for r in results] # TODO: this could also be fixed, but just shouldn't happen
         print('done')
-        mces_ds = f.create_dataset('mces', (len(results),), dtype='float32', compression='gzip')
+        print('converting output to numpy array...', end=' ')
+        results_array = np.asarray(results, dtype='float32').T
+        print('done')
+        mces_ds = f.create_dataset('mces', results_array[1], dtype='float32', compression='gzip')
         if (write_times):
-            times_ds = f.create_dataset('computation_times', (len(results),), dtype='float32', compression='gzip')
+            times_ds = f.create_dataset('computation_times', results_array[2], dtype='float32', compression='gzip')
         if (write_modes):
-            modes_ds = f.create_dataset('computation_modes', (len(results),), dtype='uint8', compression='gzip')
-        for i, (ind, distance, duration, compute_mode) in tqdm(enumerate(results), total=len(results)):
-            assert ind == indices[i, 0], 'index order different!'
-            mces_ds[i] = distance
-            if (write_times):
-                times_ds[i] = duration
-            if (write_modes):
-                modes_ds[i] = compute_mode
+            modes_ds = f.create_dataset('computation_modes', results_array[3], dtype='uint8', compression='gzip')
         comp_args = f.create_group('computation_args')
         for k, v in args:
             comp_args[k] = v
-    print(f'done writing, took {time.time() - t0:.1f} seconds')
+    print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -151,7 +146,7 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle]
 
     if num_jobs > 1:
-        results = Parallel(n_jobs=num_jobs, verbose=5)(
+        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
             delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
     else:
         results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
