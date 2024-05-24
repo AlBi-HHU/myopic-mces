@@ -71,11 +71,13 @@ def hdf5_input(file_path):
     inputs = []                 # i, smiles1, smiles2
     with h5py.File(file_path, 'r') as f:
         smiles = f['smiles']
+        smiles_dict = {i: s for i, s in enumerate(smiles)}
         indices = f['computation_indices']
         for i in tqdm(range(len(indices)), total=len(indices)):
-            id_ = indices[i, 0]
-            smiles1 = smiles[indices[i, 1]]
-            smiles2 = smiles[indices[i, 2]]
+            row = indices[i]
+            id_ row[0]
+            smiles1 = smiles_dict[row[1]]
+            smiles2 = smiles_dict[row[2]]
             inputs.append((id_, smiles1, smiles2))
     print(f'done, took {time.time() - t0:.1f} seconds')
     return inputs
