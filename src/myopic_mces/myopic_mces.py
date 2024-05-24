@@ -65,20 +65,25 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
 
 def hdf5_input(file_path):
     import h5py
+    from tqdm import tqdm
+    print('reading hdf5 input')
+    t0 = time.time()
     inputs = []                 # i, smiles1, smiles2
     with h5py.File(file_path, 'r') as f:
         smiles = f['smiles']
         indices = f['computation_indices']
-        for i in range(len(indices)):
+        for i in tqdm(range(len(indices)), total=len(indices)):
             id_ = indices[i, 0]
             smiles1 = smiles[indices[i, 1]]
             smiles2 = smiles[indices[i, 2]]
             inputs.append((id_, smiles1, smiles2))
+    print(f'done, took {time.time() - t0:.1f} seconds')
     return inputs
 
 def hdf5_output(results, file_path, write_times=True, write_modes=True, args={}):
     # for ind, distance, duration, compute_mode in results:
     import h5py
+    from tqdm import tqdm
     print('writing hdf5 output')
     t0 = time.time()
     with h5py.File(file_path, 'a') as f:
@@ -91,7 +96,7 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
             times_ds = f.create_dataset('computation_times', (len(results),), dtype='float32', compression='gzip')
         if (write_modes):
             modes_ds = f.create_dataset('computation_modes', (len(results),), dtype='uint8', compression='gzip')
-        for i, (ind, distance, duration, compute_mode) in enumerate(results):
+        for i, (ind, distance, duration, compute_mode) in tqdm(enumerate(results), total=len(results)):
             assert ind == indices[i, 0], 'index order different!'
             mces_ds[i] = distance
             if (write_times):
