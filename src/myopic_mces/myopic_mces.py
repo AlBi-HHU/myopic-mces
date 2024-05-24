@@ -63,10 +63,50 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
     distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options, no_ilp_threshold=no_ilp_threshold)
     return i, distance, time.time() - start, compute_mode
 
+def hdf5_input(file_path):
+    import h5py
+    inputs = []                 # i, smiles1, smiles2
+    with h5py.File(file_path, 'r') as f:
+        smiles = f['smiles']
+        indices = f['computation_indices']
+        for i in range(len(indices)):
+            id_ = indices[i, 0]
+            smiles1 = smiles[indices[i, 1]]
+            smiles2 = smiles[indices[i, 2]]
+            inputs.append((id_, smiles1, smiles2))
+    return inputs
+
+def hdf5_output(results, file_path, write_times=True, write_modes=True, args={}):
+    # for ind, distance, duration, compute_mode in results:
+    import h5py
+    print('writing hdf5 output')
+    t0 = time.time()
+    with h5py.File(file_path, 'a') as f:
+        indices = f['computation_indices']
+        print('first making sure that indices are in the same order...', end=' ')
+        assert list(indices[:, 0]) == [r[0] for r in results] # TODO: this could also be fixed, but just shouldn't happen
+        print('done')
+        mces_ds = f.create_dataset('mces', (len(results),), dtype='float32', compression='gzip')
+        if (write_times):
+            times_ds = f.create_dataset('computation_times', (len(results),), dtype='float32', compression='gzip')
+        if (write_modes):
+            modes_ds = f.create_dataset('computation_modes', (len(results),), dtype='uint8', compression='gzip')
+        for i, (ind, distance, duration, compute_mode) in enumerate(results):
+            assert ind == indices[i, 0], 'index order different!'
+            mces_ds[i] = distance
+            if (write_times):
+                times_ds[i] = duration
+            if (write_modes):
+                modes_ds[i] = compute_mode
+        comp_args = f.create_group('computation_args')
+        for k, v in args:
+            comp_args[k] = v
+    print(f'done writing, took {time.time() - t0:.1f} seconds')
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "input", help="input file in the format: id,smiles1,smiles2")
+        "input", help="input file in the format: id,smiles1,smiles2 OR hdf5 file when using hdf5 mode")
     parser.add_argument("output", help="output file")
     parser.add_argument("--threshold", type=float, default=10.,
                         action="store", help="threshold for the distance")
@@ -86,6 +126,7 @@ def main():
                         help="prevent solver from logging (not available for all solvers)")
     parser.add_argument("--num_jobs", type=int, help="Number of jobs; instances to run in parallel. "
                         "By default this is set to the number of (logical) CPU cores.")
+    parser.add_argument('--hdf5_mode', action='store_true')
     args = parser.parse_args()
 
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
@@ -96,8 +137,11 @@ def main():
     if args.solver_no_msg:
         additional_mces_options['solver_options']['msg'] = False
 
-    with open(args.input) as in_handle:
-        inputs = [line.strip().split(',')[:3] for line in in_handle]
+    if (args.hdf5_mode):
+        inputs = hdf5_input(args.input)
+    else:
+        with open(args.input) as in_handle:
+            inputs = [line.strip().split(',')[:3] for line in in_handle]
 
     if num_jobs > 1:
         results = Parallel(n_jobs=num_jobs, verbose=5)(
@@ -105,9 +149,12 @@ def main():
     else:
         results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
 
-    with open(args.output, 'w') as out_handle:
-        for ind, distance, duration, compute_mode in results:
-            out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
+    if (args.hdf5_mode):
+        hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())
+    else:
+        with open(args.output, 'w') as out_handle:
+            for ind, distance, duration, compute_mode in results:
+                out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
 
 if __name__ == '__main__':
     main()
