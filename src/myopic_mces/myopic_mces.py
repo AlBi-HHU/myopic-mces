@@ -75,7 +75,7 @@ def hdf5_input(file_path):
         indices = f['computation_indices']
         for i in tqdm(range(len(indices)), total=len(indices)):
             row = indices[i]
-            id_ row[0]
+            id_= list(row[0])
             smiles1 = smiles_dict[row[1]]
             smiles2 = smiles_dict[row[2]]
             inputs.append((id_, smiles1, smiles2))
