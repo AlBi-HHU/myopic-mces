@@ -6,6 +6,7 @@ Created on Mon Oct  5 17:16:05 2020
 import time
 from joblib import Parallel, delayed
 import multiprocessing
+import numpy as np
 import argparse
 from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
@@ -65,63 +66,31 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
 
 def hdf5_input(file_path):
     import h5py
-    from tqdm import tqdm
-    import numpy as np
     print('reading hdf5 input')
     t0 = time.time()
-    inputs = []                 # i, smiles1, smiles2
     with h5py.File(file_path, 'r') as f:
         smiles = np.asarray(f['smiles'])
         indices = f['computation_indices']
         inputs_raw = [indices[:, 0], smiles[indices[:, 1]], smiles[indices[:, 2]]]
-        # smiles_dict = {i: s for i, s in enumerate(smiles)}
-        # for i in tqdm(range(len(indices)), total=len(indices)):
-        #     id_, smiles1_index, smiles2_index = indices[i]
-        #     smiles1 = smiles_dict[smiles1_index]
-        #     smiles2 = smiles_dict[smiles2_index]
-        #     inputs.append((id_, smiles1, smiles2))
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
-    # return inputs
     return zip(*inputs_raw)
 
 def hdf5_output(results, file_path, write_times=True, write_modes=True, args={}):
     import h5py
-    from tqdm import tqdm
-    import numpy as np
     print('writing hdf5 output')
     t0 = time.time()
     with h5py.File(file_path, 'a') as f:
         indices = f['computation_indices']
-        print('first making sure that indices are in the same order...', end=' ')
-        assert list(indices[:, 0]) == [row[0] for row in results] # TODO: this could also be fixed, but just shouldn't happen
-        print('done')
-        # print('converting output to numpy array...', end=' ')
-        # results_array = np.asarray(results, dtype='float32').T
-        # print('done')
-        print('writing MCES values')
-        # mces_ds = f.create_dataset('mces', data=results_array[1], compression='gzip')
-        mces_ds = f.create_dataset('mces', data=[row[1] for row in results], compression='gzip')
+        assert list(indices[:, 0]) == [row[0] for row in results], 'something went wrong with the index order' # TODO: this could also be fixed, but just shouldn't happen
+        f.create_dataset('mces', data=[row[1] for row in results], compression='gzip')
         if (write_times):
-            print('writing time values')
-            # times_ds = f.create_dataset('computation_times', data=results_array[2], compression='gzip')
-            times_ds = f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
+            f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
         if (write_modes):
-            print('writing mode values')
-            # modes_ds = f.create_dataset('computation_modes', data=results_array[3], dtype='uint8', compression='gzip')
-            modes_ds = f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
-        print('writing computation args')
+            f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
         comp_args = f.create_group('computation_args')
-        print(args)
         for k, v in args:
             if v is not None:
-                try:
-                    comp_args[k] = v
-                except Exception as e:
-                    print(e, k, v)
-    # debug: pickle
-    # import pickle
-    # with open(file_path.replace('.hdf5', '.pkl'), 'wb') as out:
-    #     pickle.dump(results, out)
+                comp_args[k] = v
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
 def main():
@@ -147,7 +116,10 @@ def main():
                         help="prevent solver from logging (not available for all solvers)")
     parser.add_argument("--num_jobs", type=int, help="Number of jobs; instances to run in parallel. "
                         "By default this is set to the number of (logical) CPU cores.")
-    parser.add_argument('--hdf5_mode', action='store_true')
+    parser.add_argument('--hdf5_mode', action='store_true',
+                        help='more time and space efficient mode of input/output using the `input` hdf5-file. '
+                        'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
+                        'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
     args = parser.parse_args()
 
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
