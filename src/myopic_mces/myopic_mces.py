@@ -12,7 +12,7 @@ from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
 from myopic_mces.filter_MCES import apply_filter
 
-def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False, always_stronger_bound=True):
+def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False, always_stronger_bound=True, catch_errors=False):
     """
     Calculates the distance between two molecules
 
@@ -57,11 +57,28 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
     G2 = construct_graph(smiles2)
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
-        distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
-        if distance > threshold:
-            return i, distance, time.time() - start, compute_mode
+        try:
+            distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
+            if distance > threshold:
+                return i, distance, time.time() - start, compute_mode
+        except Exception as e:
+            print(e)
+            if (catch_errors):
+                distance = -1
+                compute_mode = 2
+            else:
+                raise e
     # calculate MCES
-    distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options, no_ilp_threshold=no_ilp_threshold)
+    try:
+        distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
+                                          no_ilp_threshold=no_ilp_threshold)
+    except Exception as e:
+        print(e)
+        if (catch_errors):
+            distance = -1
+            compute_mode = 1
+        else:
+            raise e
     return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):
@@ -121,6 +138,7 @@ def main():
                         'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
                         'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
     parser.add_argument('--hide_rdkit_warnings', action='store_true')
+    parser.add_argument('--catch_computation_errors', action='store_true')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
@@ -128,10 +146,11 @@ def main():
         RDLogger.DisableLog('rdApp.*')
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
-                                   always_stronger_bound=not args.choose_bound_dynamically)
-    if args.solver_onethreaded:
+                                   always_stronger_bound=not args.choose_bound_dynamically,
+                                   catch_errors=args.catch_computation_errors)
+    if (args.solver_onethreaded):
         additional_mces_options['solver_options']['threads'] = 1
-    if args.solver_no_msg:
+    if (args.solver_no_msg):
         additional_mces_options['solver_options']['msg'] = False
 
     if (args.hdf5_mode):
@@ -140,7 +159,7 @@ def main():
         with open(args.input) as in_handle:
             inputs = [line.strip().split(',')[:3] for line in in_handle]
 
-    if num_jobs > 1:
+    if (num_jobs > 1):
         results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
             delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
     else:
