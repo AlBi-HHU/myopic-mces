@@ -120,8 +120,12 @@ def main():
                         help='more time and space efficient mode of input/output using the `input` hdf5-file. '
                         'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
                         'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
+    parser.add_argument('--hide_rdkit_warnings', action='store_true')
     args = parser.parse_args()
 
+    if (args.hide_rdkit_warnings):
+        from rdkit import RDLogger
+        RDLogger.DisableLog('rdApp.*')
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically)
