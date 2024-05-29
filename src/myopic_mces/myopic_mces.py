@@ -139,11 +139,14 @@ def main():
                         'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
     parser.add_argument('--hide_rdkit_warnings', action='store_true')
     parser.add_argument('--catch_computation_errors', action='store_true')
+    parser.add_argument('--jobs_batch_size', type=int, default=1000)
+    parser.add_argument('--jobs_dispatch', default='10*n_jobs')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
         from rdkit import RDLogger
         RDLogger.DisableLog('rdApp.*')
+        # TODO: does not work
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically,
@@ -160,7 +163,7 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle]
 
     if (num_jobs > 1):
-        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=1000, pre_dispatch='10*n_jobs')(
+        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
             delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
     else:
         results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
