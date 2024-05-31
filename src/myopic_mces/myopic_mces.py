@@ -5,7 +5,6 @@ Created on Mon Oct  5 17:16:05 2020
 """
 import time
 from joblib import Parallel, delayed
-import multiprocessing
 import numpy as np
 import argparse
 import sys
@@ -133,22 +132,22 @@ def main():
     parser.add_argument("--solver_no_msg", action="store_true",
                         help="prevent solver from logging (not available for all solvers)")
     parser.add_argument("--num_jobs", type=int, help="Number of jobs; instances to run in parallel. "
-                        "By default this is set to the number of (logical) CPU cores.")
+                        "By default this is set to the number of (logical) CPU cores.", default=-1)
     parser.add_argument('--hdf5_mode', action='store_true',
                         help='more time and space efficient mode of input/output using the `input` hdf5-file. '
                         'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
                         'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
     parser.add_argument('--hide_rdkit_warnings', action='store_true')
     parser.add_argument('--catch_computation_errors', action='store_true')
-    parser.add_argument('--jobs_batch_size', type=int, default=1000)
+    parser.add_argument('--jobs_batch_size', type=int, default=32)
     parser.add_argument('--jobs_dispatch', default='10*n_jobs')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
         from rdkit import RDLogger
         RDLogger.DisableLog('rdApp.*')
-        # TODO: does not work
-    num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
+        # TODO: does not work with forks (preferred parallelization)
+
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically,
                                    catch_errors=args.catch_computation_errors)
@@ -161,13 +160,10 @@ def main():
         inputs = hdf5_input(args.input)
     else:
         with open(args.input) as in_handle:
-            inputs = [line.strip().split(',')[:3] for line in in_handle]
+            inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
 
-    if (num_jobs > 1):
-        results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
-            delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
-    else:
-        results = [MCES(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs]
+    results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
+        delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
 
     if (args.hdf5_mode):
         hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())
