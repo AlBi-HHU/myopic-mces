@@ -63,7 +63,7 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
             if distance > threshold:
                 return i, distance, time.time() - start, compute_mode
         except Exception as e:
-            print(smiles1, smiles2, 'filter', e, file=sys.stderr)
+            print('ERROR:', smiles1, smiles2, 'filter', e, file=sys.stderr)
             if (catch_errors):
                 distance = -1
                 compute_mode = 2
@@ -74,7 +74,7 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
         distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
                                           no_ilp_threshold=no_ilp_threshold)
     except Exception as e:
-        print(smiles1, smiles2, 'exact', e, file=sys.stderr)
+        print('ERROR:', smiles1, smiles2, 'exact', e, file=sys.stderr)
         if (catch_errors):
             distance = -1
             compute_mode = 1
