@@ -162,7 +162,7 @@ def main():
         with open(args.input) as in_handle:
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
 
-    results = Parallel(n_jobs=num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
+    results = Parallel(n_jobs=args.num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
         delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
 
     if (args.hdf5_mode):
