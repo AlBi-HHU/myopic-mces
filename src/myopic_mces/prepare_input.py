@@ -8,13 +8,13 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('input_file', help='readily formatedd myopic_mces input OR list of smiles for `h5`-mode')
     parser.add_argument('out_folder')
-    parser.add_argument('--h5', action='store_true')
+    parser.add_argument('--hdf5_mode', action='store_true')
     parser.add_argument('--batch_size', type=int, default=224960 * 100)
     parser.add_argument('--batch_start', type=int, default=0)
     parser.add_argument('--no_shuffle', action='store_true')
     args = parser.parse_args()
 
-    if (args.h5):
+    if (args.hdf5_mode):
         import h5py
         from scipy.special import binom
         print('hdf5-mode...')
