@@ -113,34 +113,35 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "input", help="input file in the format: id,smiles1,smiles2 OR hdf5 file when using hdf5 mode")
-    parser.add_argument("output", help="output file")
-    parser.add_argument("--threshold", type=float, default=10.,
-                        action="store", help="threshold for the distance")
-    parser.add_argument("--no_ilp_threshold", action="store_true",
-                        help="(experimental) if set, do not add threshold as constraint to ILP, "
-                        "resulting in longer runtimes and potential violations of the triangle equation")
-    parser.add_argument("--choose_bound_dynamically", action="store_true",
-                        help="if this is set, compute and use potentially weaker but faster lower bound if "
-                        "already greater than the threshold. Otherwise (default), the strongest lower bound "
-                        "is always computed and used. Enabling this can lead to massive speedups.")
-    parser.add_argument("--solver", type=str, default="default",
-                        action="store", help="Solver for the ILP. example:CPLEX_CMD")
-    parser.add_argument("--solver_onethreaded", action="store_true",
-                        help="limit ILP solver to one thread, resulting in faster "
-                        "performance with parallel computations (not available for all solvers)")
-    parser.add_argument("--solver_no_msg", action="store_true",
-                        help="prevent solver from logging (not available for all solvers)")
-    parser.add_argument("--num_jobs", type=int, help="Number of jobs; instances to run in parallel. "
-                        "By default this is set to the number of (logical) CPU cores.", default=-1)
+        'input', help='input file in the format: id,smiles1,smiles2 OR hdf5 file when using hdf5 mode')
+    parser.add_argument('output', help='output file')
+    parser.add_argument('--threshold', type=float, default=10.,
+                        action='store', help='threshold for the distance')
+    parser.add_argument('--no_ilp_threshold', action='store_true',
+                        help='(experimental) if set, do not add threshold as constraint to ILP, '
+                        'resulting in longer runtimes and potential violations of the triangle equation')
+    parser.add_argument('--choose_bound_dynamically', action='store_true',
+                        help='if this is set, compute and use potentially weaker but faster lower bound if '
+                        'already greater than the threshold. Otherwise (default), the strongest lower bound '
+                        'is always computed and used. Enabling this can lead to massive speedups.')
+    parser.add_argument('--solver', type=str, default='default',
+                        action='store', help='Solver for the ILP. example:CPLEX_CMD')
+    parser.add_argument('--solver_onethreaded', action='store_true',
+                        help='limit ILP solver to one thread, resulting in faster '
+                        'performance with parallel computations (not available for all solvers)')
+    parser.add_argument('--solver_no_msg', action='store_true',
+                        help='prevent solver from logging (not available for all solvers)')
+    parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
+                        'By default this is set to the number of (logical) CPU cores.', default=-1)
     parser.add_argument('--hdf5_mode', action='store_true',
                         help='more time and space efficient mode of input/output using the `input` hdf5-file. '
                         'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
                         'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
-    parser.add_argument('--hide_rdkit_warnings', action='store_true')
-    parser.add_argument('--catch_computation_errors', action='store_true')
-    parser.add_argument('--jobs_batch_size', type=int, default=32)
-    parser.add_argument('--jobs_dispatch', default='10*n_jobs')
+    parser.add_argument('--hide_rdkit_warnings', action='store_true', help='attempts to suppress RDKit warning')
+    parser.add_argument('--catch_computation_errors', action='store_true', help='(experimental) instead of aborting '
+                        'the computations, instances that failed to compute receive distance "-1"')
+    parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
+    parser.add_argument('--jobs_dispatch', default='10*n_jobs', help='(experimental) pre-dispatch of jobs for parallelization')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
