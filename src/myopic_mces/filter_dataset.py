@@ -1,4 +1,4 @@
-"""For each structure of the query dataset, searchs for a match in the 'database' structures.
+"""For each structure of the query dataset, searches for a match in the 'database' structures.
 Match means: structure with MCES distance smaller than the provided threshold.
 Output: List of structures with a match.
 """
@@ -61,8 +61,6 @@ if __name__ == '__main__':
                         help='prevent solver from logging (not available for all solvers)')
     parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
                         'By default this is set to the number of (logical) CPU cores.')
-    parser.add_argument('--mpire', action='store_true')
-
     args = parser.parse_args()
     num_jobs = multiprocessing.cpu_count() if args.num_jobs is None else args.num_jobs
 
@@ -83,16 +81,9 @@ if __name__ == '__main__':
         input_data = json.load(f)
     print(f'read input in{time.time() - t0:.1f}s, {len(input_data)} query compounds')
 
-    if (args.mpire):
-        fun = get_mces_fun(threshold=args.threshold, solver=args.solver, solver_options=solver_options, always_stronger_bound=False)
-        from mpire import WorkerPool
-        from mpire.utils import make_single_arguments
-        with WorkerPool(n_jobs=num_jobs) as pool:
-            results = pool.map_unordered(fun, make_single_arguments(enumerate(input_data.items())), progress_bar=True, iterable_len=len(input_data))
-    else:
-        results = Parallel(n_jobs=num_jobs, verbose=5)(
-            delayed(MCES_query)(i, query, db_list, args.threshold, args.solver, solver_options=solver_options, always_stronger_bound=False)
-            for i, (query, db_list) in enumerate(input_data.items()))
+    results = Parallel(n_jobs=num_jobs, verbose=5)(
+        delayed(MCES_query)(i, query, db_list, args.threshold, args.solver, solver_options=solver_options, always_stronger_bound=False)
+        for i, (query, db_list) in enumerate(input_data.items()))
     with open(args.out, 'w') as out:
         for res in results:
             if res is None:
