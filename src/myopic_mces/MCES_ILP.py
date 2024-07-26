@@ -7,7 +7,7 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1,G2,threshold,solver,solver_options={},no_ilp_threshold=False):
+def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
     """
      Calculates the exact distance between two molecules using an ILP
 
@@ -17,10 +17,10 @@ def MCES_ILP(G1,G2,threshold,solver,solver_options={},no_ilp_threshold=False):
          Graph representing the first molecule.
      G2 : networkx.classes.graph.Graph
          Graph representing the second molecule.
-     threshold : int
+     threshold : float
          Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
      solver: string
-         ILP-solver used for solving MCES. Example:GUROBI_CMD
+         ILP-solver used for solving MCES. Example:CPLEX_CMD
      solver_options: dict
          additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
      no_ilp_threshold: bool
