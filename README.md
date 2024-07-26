@@ -43,7 +43,7 @@ General options
                          By default this is set to the number of (logical) CPU cores.
 
 --hdf5_mode              Input will be read from `input-file` in HDF5 format; output will be appended to this file.
-                         See [below](#prepare-hdf5-input)
+                         See "Prepare HDF5 input" below
 ```
 
 Options for the ILP solver
