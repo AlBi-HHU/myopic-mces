@@ -87,17 +87,17 @@ joblib(==1.2.0)
 Version numbers in braces correspond to an exemplary tested configuration (under Python version 3.11.0).
 The program can be run on any standard operating system, tested on Windows 10 64 bit and Arch-Linux@linux-6.2.7 64 bit.
 
-The recommended method of installation is via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
+The recommended method of installation is via `pip`.
+```bash
+pip install myopic_mces
+```
+
+Dependencies can also be installed via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
 Download this repository, navigate to the download location and execute the following commands (replacing `conda` with `mamba` when using mamba):
 ```bash
 conda env create -f conda_env.yml
 # to activate the created enironment:
 conda activate myopic_mces
-```
-
-A PyPI-package is also available, install via:
-```bash
-pip install myopic_mces
 ```
 
 A typical installation time should not exceed 5 minutes, mostly depending on the internet connection speed to download all required packages.
