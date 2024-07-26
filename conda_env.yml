@@ -2,6 +2,7 @@ name: myopic_mces
 channels:
   - conda-forge
 dependencies:
+  - python >= 3.6
   - rdkit >= 2022.09.5
   - networkx >= 3.0
   - pulp >= 2.7.0
