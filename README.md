@@ -149,6 +149,23 @@ python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode input-sm
 
 Created batches (`batch$i.hdf5`) are written directly to the `output-folder`.
 
+### [`combine_hdf5_batches.py`](src/myopic_mces/combine_hdf5_batches.py)
+
+Batches results can be combined into a single HDF5 file with this script:
+```bash
+python -m myopic_mces.combine_hdf5_batches --out output-file batches/batch*.hdf5
+```
+
+To get a square matrix of MCES distances for convenience within Python from this file, simply do:
+```python
+import h5py
+from scipy.spatial.distance import squareform
+
+with h5py.File(hdf5outputfile, 'r') as f:
+    mces_square = squareform(f['mces'])
+    smiles = f['mces_smiles_order'] # column/row labels
+```
+
 ### [`filter_dataset.py`](src/myopic_mces/filter_dataset.py)
 
 If you want to filter datasets for similar structures in a database, you can use this script. This can speed up computations considerably, as for each query structure computations are stopped, when a "match" is found.
