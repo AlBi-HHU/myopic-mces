@@ -6,11 +6,11 @@ from time import time
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('input_batches', help='bachted HDF5 output files from MCES computations')
+    parser.add_argument('input_batches', help='bachted HDF5 output files from MCES computations', nargs='+')
     parser.add_argument('--out', help='HDF5 file for combined results', required=True)
     args = parser.parse_args()
 
-    t0 = time.time()
+    t0 = time()
 
     with h5py.File(args.input_batches[0], 'r') as f:
         smiles = list(f['smiles'])
@@ -28,11 +28,13 @@ if __name__ == '__main__':
             f['computation_indices'].read_direct(all_indices[i:(i+n)])
             i += n
 
+    print('restoring correct order')
     order = all_indices[:, 0].argsort()
     all_mces_order = all_mces[order]
     all_indices_order = all_indices[order]
+    print('writing output to', args.out)
     with h5py.File(args.out, 'w') as f:
         f.create_dataset('mces', data=all_mces_order)
         f.create_dataset('mces_smiles_order', data=smiles)
 
-    print(f'combined {len(all_indices_order)} MCES computations in {(time.time() - t0) / 60:.1f}min')
+    print(f'combined {len(all_indices_order)} MCES computations in {(time() - t0) / 60:.1f}min')
