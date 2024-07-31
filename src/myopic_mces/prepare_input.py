@@ -9,6 +9,8 @@ if __name__ == '__main__':
     parser.add_argument('input_file', help='readily formatedd myopic_mces input OR list of smiles for `h5`-mode')
     parser.add_argument('out_folder')
     parser.add_argument('--hdf5_mode', action='store_true')
+    parser.add_argument('--hdf5_extra_input_file', help='in HDF5 mode, with this argument an extra input file (see above) can be provided: '
+                        'pairs from `input_file`-SMILES and `hdf5_extra_input_file`-SMILES will then be generated', default=None)
     parser.add_argument('--batch_size', type=int, default=224960 * 100)
     parser.add_argument('--batch_start', type=int, default=0)
     parser.add_argument('--no_shuffle', action='store_true')
@@ -18,20 +20,40 @@ if __name__ == '__main__':
         import h5py
         from scipy.special import binom
         print('hdf5-mode...')
-        # TODO: also make mode for TWO input files (e.g., dataset x bio)
-        smiles_input = [l.strip() for l in open(args.input_file).readlines()]
-        n = len(smiles_input)
-        ninstances = int(binom(n, 2))
-        if ninstances >= np.iinfo(np.int64).max:
-            # can probably not happen anyways?
-            raise Exception('too many instances:', ninstances)
-        nbatches = int(np.ceil(ninstances/args.batch_size))
-        print(f'read {n:_} SMILES as input -> {ninstances:_} instances -> {nbatches} batches of {args.batch_size:_}')
-        settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
-        print('creating full index array')
-        index_array_full = np.zeros((ninstances, 3), dtype='int64')
-        index_array_full[:, 0] = np.arange(ninstances)
-        index_array_full[:, 1:] = np.stack(np.triu_indices(n, k=1), axis=-1)
+        # TWO input files (e.g., dataset x bio)
+        if (args.hdf5_extra_input_file is not None):
+            smiles_input1 = [l.strip() for l in open(args.input_file).readlines()]
+            smiles_input2 = [l.strip() for l in open(args.hdf5_extra_input_file).readlines()]
+            smiles_input = smiles_input1 + smiles_input2
+            ninstances = len(smiles_input1) * len(smiles_input2)
+            if ninstances >= np.iinfo(np.int64).max:
+                # can probably not happen anyways?
+                raise Exception('too many instances:', ninstances)
+            nbatches = int(np.ceil(ninstances/args.batch_size))
+            print(f'read {len(smiles_input1):_}*{len(smiles_input2):_} SMILES as input -> {ninstances:_} instances '
+                  f'-> {nbatches} batches of {args.batch_size:_}')
+            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
+            print('creating full index array')
+            index_array_full = np.zeros((ninstances, 3), dtype='int64')
+            index_array_full[:, 0] = np.arange(ninstances)
+            index_array_full[:, 1:] = np.stack(np.meshgrid(range(0, len(smiles_input1)),
+                                                           range(len(smiles_input1), len(smiles_input))),
+                                               axis=-1).reshape(-1, 2)
+        # one input file
+        else:
+            smiles_input = [l.strip() for l in open(args.input_file).readlines()]
+            n = len(smiles_input)
+            ninstances = int(binom(n, 2))
+            if ninstances >= np.iinfo(np.int64).max:
+                # can probably not happen anyways?
+                raise Exception('too many instances:', ninstances)
+            nbatches = int(np.ceil(ninstances/args.batch_size))
+            print(f'read {n:_} SMILES as input -> {ninstances:_} instances -> {nbatches} batches of {args.batch_size:_}')
+            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
+            print('creating full index array')
+            index_array_full = np.zeros((ninstances, 3), dtype='int64')
+            index_array_full[:, 0] = np.arange(ninstances)
+            index_array_full[:, 1:] = np.stack(np.triu_indices(n, k=1), axis=-1)
         if (not args.no_shuffle):
             print('shuffling full index array')
             np.random.shuffle(index_array_full)
