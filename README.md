@@ -22,7 +22,7 @@ pip install -e .
 ```
 
 For usage in Python:
-```
+```python
 from myopic_mces import MCES
 MCES('CC(=O)OC1=CC=CC=C1C(=O)O', 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C')
 ```
