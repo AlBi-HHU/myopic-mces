@@ -131,6 +131,8 @@ def main():
                         'performance with parallel computations (not available for all solvers)')
     parser.add_argument('--solver_no_msg', action='store_true',
                         help='prevent solver from logging (not available for all solvers)')
+    parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
+                        help='EXPERIMENTAL: set a time limit for the ILP solver, solutions will not be exact anymore!')
     parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
                         'By default this is set to the number of (logical) CPU cores.', default=-1)
     parser.add_argument('--hdf5_mode', action='store_true',
@@ -156,6 +158,8 @@ def main():
         additional_mces_options['solver_options']['threads'] = 1
     if (args.solver_no_msg):
         additional_mces_options['solver_options']['msg'] = False
+    if (args.solver_time_limit_seconds is not None):
+        additional_mces_options['solver_options']['timeLimit'] = args.solver_time_limit_seconds
 
     if (args.hdf5_mode):
         inputs = hdf5_input(args.input)
