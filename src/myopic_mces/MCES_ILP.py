@@ -7,9 +7,9 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 
-def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
+def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     """
-     Calculates the exact distance between two molecules using an ILP
+     Constructs the ILP for calculating the exact distance between two molecules
 
      Parameters
      ----------
@@ -19,22 +19,13 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
          Graph representing the second molecule.
      threshold : float
          Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
-     solver: string
-         ILP-solver used for solving MCES. Example:CPLEX_CMD
-     solver_options: dict
-         additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
      no_ilp_threshold: bool
          if true, always return exact distance even if it is below the threshold (slower)
 
      Returns:
      -------
-     float
-         Distance between the molecules
-     int
-         Type of Distance:
-             1 : Exact Distance
-             2 : Lower bound (If the exact distance is above the threshold)
-
+     pulp.LpProblem
+         ILP
     """
 
     ILP=pulp.LpProblem("MCES", pulp.LpMinimize)
@@ -149,13 +140,54 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     if threshold!=-1 and not no_ilp_threshold:
         ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
 
+    return ILP
+
+
+def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
+    """
+     Calculates the exact distance between two molecules using an ILP
+
+     Parameters
+     ----------
+     G1 : networkx.classes.graph.Graph
+         Graph representing the first molecule.
+     G2 : networkx.classes.graph.Graph
+         Graph representing the second molecule.
+     threshold : float
+         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
+     solver: string
+         ILP-solver used for solving MCES. Example:CPLEX_CMD
+     solver_options: dict
+         additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
+     no_ilp_threshold: bool
+         if true, always return exact distance even if it is below the threshold (slower)
+
+     Returns:
+     -------
+     float
+         Distance between the molecules
+     int
+         Type of Distance:
+             1 : Exact Distance
+             2 : Lower bound (If the exact distance is above the threshold)
+
+    """
+
+    ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold)
+
     #solve the ILP
     if solver=="default":
         ILP.solve()
     else:
         sol=pulp.getSolver(solver, **solver_options)
         ILP.solve(sol)
-    if ILP.status==1:
-        return float(ILP.objective.value()),1
+
+    if ILP.status == pulp.constants.LpStatusOptimal:
+        return float(ILP.objective.value()), 1
+    elif ILP.status == pulp.constants.LpStatusNotSolved:
+        # must be time limit
+        return float(ILP.objective.value()), 5
+    elif ILP.status == pulp.constants.LpStatusInfeasible:
+        return threshold, 2
     else:
-        return threshold,2
+        raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
