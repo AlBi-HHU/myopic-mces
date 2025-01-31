@@ -68,6 +68,9 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
                 compute_mode = 2
             else:
                 raise e
+    # store the filter results
+    distance_filter = distance
+    compute_mode_filter = compute_mode
     # calculate MCES
     try:
         distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
@@ -79,6 +82,10 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
             compute_mode = 1
         else:
             raise e
+    # if ILP computation does not have a results because the time limit was reached, use the filter
+    if (distance == -1 and compute_mode == 5):
+        distance = distance_filter
+        compute_mode = 6
     return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):
