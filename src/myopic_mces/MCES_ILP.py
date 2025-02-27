@@ -207,6 +207,25 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     else:
         raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
 
+def add_MCES_to_molgraphs(G1, G2, solver='CPLEX_CMD'):
+    import re
+    ILP = construct_ILP(G1, G2, threshold=-1)
+    sol=pulp.getSolver(solver, msg=False)
+    ILP.solve(sol)
+    for v in ILP.variables():
+        if (v.name.startswith('nodepairs_')):
+            i, j = map(int, re.findall(r'\d+', v.name.split('_', 1)[1]))
+            G1.nodes[i]['in_mces'] = True
+            G2.nodes[j]['in_mces'] = True
+        elif (v.name.startswith('edgepairs_') and len(indices:=list(map(int, re.findall(r'\d+', v.name))))==4):
+            i1, j1, i2, j2 = indices
+            G1.edges[(i1, j1)]['in_mces'] = True
+            G2.edges[(i2, j2)]['in_mces'] = True
+        # elif (v.name.startswith('edgepairs_(_1,')):
+        #     # edge of the second graph is *not* part of MCES
+        #     _, i, j = map(int, re.findall(r'\d+', v.name))
+        #     G2.edges[(i, j)]['in_mces'] = True
+
 def test_ILP_status():
     from myopic_mces.graph import construct_graph
 
