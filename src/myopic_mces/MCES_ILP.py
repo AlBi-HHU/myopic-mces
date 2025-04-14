@@ -151,7 +151,8 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
 
     #solve the ILP
     if solver=="default":
-        ILP.solve()
+        sol=pulp.getSolver(solver="PULP_CBC_CMD", **solver_options)
+        ILP.solve(sol)
     else:
         sol=pulp.getSolver(solver, **solver_options)
         ILP.solve(sol)
