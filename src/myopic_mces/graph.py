@@ -22,11 +22,10 @@ def construct_graph(s):
         The bond types are represented as edge weights.
         The atom types are represented as atom attributes of the nodes.
     """
-    if (isinstance(s, str)):
-        #read the smile
-        m = Chem.MolFromSmiles(s)
-    else:
+    if (isinstance(s, Chem.rdchem.Mol)):
         m = s
+    else:
+        m = Chem.MolFromSmiles(s)
     # convert the molecule into a graph
     # The bond and atom types are converted to node/edge attributes
     G=nx.Graph()
