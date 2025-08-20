@@ -32,7 +32,6 @@ if __name__ == '__main__':
             nbatches = int(np.ceil(ninstances/args.batch_size))
             print(f'read {len(smiles_input1):_}*{len(smiles_input2):_} SMILES as input -> {ninstances:_} instances '
                   f'-> {nbatches} batches of {args.batch_size:_}')
-            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
             print('creating full index array')
             index_array_full = np.zeros((ninstances, 3), dtype='int64')
             index_array_full[:, 0] = np.arange(ninstances)
@@ -49,7 +48,6 @@ if __name__ == '__main__':
                 raise Exception('too many instances:', ninstances)
             nbatches = int(np.ceil(ninstances/args.batch_size))
             print(f'read {n:_} SMILES as input -> {ninstances:_} instances -> {nbatches} batches of {args.batch_size:_}')
-            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
             print('creating full index array')
             index_array_full = np.zeros((ninstances, 3), dtype='int64')
             index_array_full[:, 0] = np.arange(ninstances)
@@ -67,9 +65,6 @@ if __name__ == '__main__':
             with h5py.File(file_path, 'w') as f:
                 f.create_dataset('computation_indices', data=batch, dtype='int64', compression='gzip')
                 f.create_dataset('smiles', data=smiles_input)
-                settings_group = f.create_group('settings')
-                for k, v in settings.items():
-                    settings_group[k] = v
                 f.attrs['original_path'] = file_path
             print('done')
     else:
