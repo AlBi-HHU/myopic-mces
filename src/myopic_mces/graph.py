@@ -8,14 +8,14 @@ from rdkit import Chem
 import networkx as nx
 
 def construct_graph(s):
-    """ 
+    """
     Converts a SMILE into a graph
-     
+
     Parameters
     ----------
-    s : str 
+    s : str
         Smile of the molecule
-        
+
     Returns:
     -------
     networkx.classes.graph.Graph
@@ -33,3 +33,11 @@ def construct_graph(s):
     for bond in m.GetBonds():
         G.add_edge(bond.GetBeginAtom().GetIdx(),bond.GetEndAtom().GetIdx(),weight=bond.GetBondTypeAsDouble())
     return G
+
+import numpy as np
+
+def make_formula(s):
+    formula = np.zeros(54, dtype='int8')
+    for a in Chem.MolFromSmiles(s).GetAtoms():
+        formula[a.GetAtomicNum()] += 1
+    return formula

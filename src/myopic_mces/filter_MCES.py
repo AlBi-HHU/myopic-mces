@@ -7,6 +7,14 @@ Created on Sat Oct 17 17:59:05 2020
 
 import networkx as nx
 
+
+import numpy as np
+from myopic_mces.graph import make_formula
+def filter0(s1, s2):
+    f1, f2 = make_formula(s1), make_formula(s2)
+    return np.abs(f1 - f2).sum().item()
+
+
 def filter1(G1,G2):
     """
      Finds a lower bound for the distance based on degree

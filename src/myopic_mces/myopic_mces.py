@@ -10,9 +10,10 @@ import argparse
 import sys
 from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
-from myopic_mces.filter_MCES import apply_filter
+from myopic_mces.filter_MCES import apply_filter, filter0
 
-def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False, always_stronger_bound=True, catch_errors=False):
+def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False,
+         always_stronger_bound=True, catch_errors=False, use_bound_zero=False):
     """
     Calculates the distance between two molecules
 
@@ -52,12 +53,16 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
 
     """
     start = time.time()
-    # construct graph for both smiles.
-    G1 = construct_graph(smiles1)
-    G2 = construct_graph(smiles2)
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
         try:
+            if (use_bound_zero):
+                distance = filter0(smiles1, smiles2)
+                if distance > threshold:
+                    return i, distance, time.time() - start, 0
+            # construct graph for both smiles.
+            G1 = construct_graph(smiles1)
+            G2 = construct_graph(smiles2)
             distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
             if distance > threshold:
                 return i, distance, time.time() - start, compute_mode
@@ -124,6 +129,9 @@ def main():
                         help='if this is set, compute and use potentially weaker but faster lower bound if '
                         'already greater than the threshold. Otherwise (default), the strongest lower bound '
                         'is always computed and used. Enabling this can lead to massive speedups.')
+    parser.add_argument('--use_bound_zero', action='store_true',
+                        help='(experimental) include bound zero (compare molecular formula), which when enabled '
+                        'will always be used before the other, stronger bounds.')
     parser.add_argument('--solver', type=str, default='default',
                         action='store', help='Solver for the ILP. example:CPLEX_CMD')
     parser.add_argument('--solver_onethreaded', action='store_true',
@@ -151,6 +159,7 @@ def main():
 
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically,
+                                   use_bound_zero=args.use_bound_zero,
                                    catch_errors=args.catch_computation_errors)
     if (args.solver_onethreaded):
         additional_mces_options['solver_options']['threads'] = 1
