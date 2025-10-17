@@ -37,7 +37,7 @@ def construct_graph(s):
 import numpy as np
 
 def make_formula(s):
-    formula = np.zeros(54, dtype='int8')
+    formula = np.zeros(118, dtype='int8')
     for a in Chem.MolFromSmiles(s).GetAtoms():
         formula[a.GetAtomicNum()] += 1
     return formula
