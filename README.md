@@ -184,4 +184,4 @@ The database can be different for each query SMILES, allow pre-filtering dependi
 
 ## Citation
 
-F. Kretschmer, J. Seipp, M. Ludwig, G. W. Klau, and S. Böcker, [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) *Nat Commun* 16(1):554, 2025.
+F. Kretschmer, J. Seipp, M. Ludwig, G. W. Klau, and S. Böcker, [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w). *Nat Commun* 16(1):554, 2025.
