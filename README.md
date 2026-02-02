@@ -1,6 +1,6 @@
 # Computation of myopic MCES distances
 
-Implementation of myopic MCES distance computation, see the preprint at [doi:10.1101/2023.03.27.534311](https://doi.org/10.1101/2023.03.27.534311) for details.
+Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
 
 ## Usage
 
@@ -181,3 +181,7 @@ Input is provided in the following format (JSON file):
 ```
 
 The database can be different for each query SMILES, allow pre-filtering depending on the query.
+
+## Citation
+
+F. Kretschmer, J. Seipp, M. Ludwig, G. W. Klau, and S. Böcker. [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w). *Nat Commun* 16(1):554, 2025.
