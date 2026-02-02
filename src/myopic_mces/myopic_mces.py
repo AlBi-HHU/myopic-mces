@@ -124,6 +124,35 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
                 comp_args[k] = v
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
+# TODO this can also be added to the "combine_batches" function to reduce the times this libary file needs to be loaded in. 
+def filter_inputs(inputs,dmatrix_file):
+    from scipy.spatial.distance import squareform
+    import h5py
+    print('filtering for precomputed mces')
+    t0 = time.time()
+    filtered_inputs = []
+    precomputed_mces = []
+    with h5py.File(dmatrix_file,'r') as hf:
+            mces = hf["mces"][:]
+            all_smiles = [s.decode() for s in hf['mces_smiles_order'][:]]
+    mces = squareform(mces)
+    smiles_index = {}
+    for i, smiles in enumerate(all_smiles):
+        smiles_index[smiles] = i
+    for i, s1, s2 in inputs:
+        idx1 = smiles_index.get(s1)
+        idx2 = smiles_index.get(s2)
+        
+        if idx1 is not None and idx2 is not None:
+            val = mces[idx1][idx2]
+            if val != -1:
+                precomputed_mces.append((i, val))
+                continue
+        
+        filtered_inputs.append((i, s1, s2))
+    print(f"done, took {(time.time() - t0) / 60:.1f}min and found {len(precomputed_mces)} in libary, {len(filtered_inputs)} to go")
+    return filtered_inputs, precomputed_mces
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -161,6 +190,9 @@ def main():
                         'the computations, instances that failed to compute receive distance "-1"')
     parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
     parser.add_argument('--jobs_dispatch', default='10*n_jobs', help='(experimental) pre-dispatch of jobs for parallelization')
+    parser.add_argument('--use_matrix_lookup', help='(experimental) when a matrix with allready calculated mces is given, ' \
+    'the solver will filter all calculated mces to prevent unneeded computetation. ' \
+    'Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`)')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
@@ -184,9 +216,17 @@ def main():
     else:
         with open(args.input) as in_handle:
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
+    
+    if args.use_matrix_lookup:
+        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup)
+    else:
+        inputs_to_process, results = inputs, []
 
-    results = Parallel(n_jobs=args.num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
-        delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
+    results += Parallel(n_jobs=args.num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
+            delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs_to_process)
+
+    if args.use_matrix_lookup:
+        results.sort(key=lambda x: x[0])
 
     if (args.hdf5_mode):
         hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())
