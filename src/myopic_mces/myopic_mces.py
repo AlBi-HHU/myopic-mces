@@ -134,7 +134,7 @@ def filter_inputs(inputs,dmatrix_file):
     precomputed_mces = []
     with h5py.File(dmatrix_file,'r') as hf:
             mces = hf["mces"][:]
-            all_smiles = [s.decode() for s in hf['mces_smiles_order'][:]]
+            all_smiles =hf['mces_smiles_order'][:]  #Decoding will result in not finding any value since hdf input process wont decode either! [s.decode() for s in hf['mces_smiles_order'][:]]
     mces = squareform(mces)
     smiles_index = {}
     for i, smiles in enumerate(all_smiles):
