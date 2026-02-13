@@ -125,7 +125,7 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
 # TODO this can also be added to the "combine_batches" function to reduce the times this libary file needs to be loaded in. 
-def filter_inputs(inputs,dmatrix_file):
+def filter_inputs(inputs,dmatrix_file,threshold=None):
     from scipy.spatial.distance import squareform
     import h5py
     print('filtering for precomputed mces')
@@ -146,8 +146,9 @@ def filter_inputs(inputs,dmatrix_file):
         if idx1 is not None and idx2 is not None:
             val = mces[idx1][idx2]
             if val != -1:
-                precomputed_mces.append((i, val))
-                continue
+                if threshold is None or val < threshold:
+                    precomputed_mces.append((i, val))
+                    continue
         
         filtered_inputs.append((i, s1, s2))
     print(f"done, took {(time.time() - t0) / 60:.1f}min and found {len(precomputed_mces)} in libary, {len(filtered_inputs)} to go")
@@ -218,7 +219,7 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
     
     if args.use_matrix_lookup:
-        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup)
+        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup,threshold=args.threshold)
     else:
         inputs_to_process, results = inputs, []
 
