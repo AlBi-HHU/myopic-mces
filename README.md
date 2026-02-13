@@ -63,6 +63,14 @@ Experimental options for myopic MCES distance computation
 --choose_bound_dynamically   If set, a potentially weaker but faster lower bound will be computed and used
                              when this bound is already greater than the threshold. By default (without
                              this option), always the strongest lower bound will be computed and used.
+
+--use_matrix_lookup          When a matrix with allready calculated mces is given, the solver will filter 
+                             all calculated mces to prevent unneeded computetation. Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`). 
+                             Node: When used in combination with `prepare_input` only use with `--no_shuffle`.
+
+--lookup_threshold           When a lookup matrix is given and you want to update to a certain threshold.
+                             This will ignore found mces equal or above the given threshold.
+
 ```
 
 ## Recommended settings

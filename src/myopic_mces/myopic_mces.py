@@ -125,7 +125,7 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
 # TODO this can also be added to the "combine_batches" function to reduce the times this libary file needs to be loaded in. 
-def filter_inputs(inputs,dmatrix_file):
+def filter_inputs(inputs,dmatrix_file,threshold=None):
     from scipy.spatial.distance import squareform
     import h5py
     print('filtering for precomputed mces')
@@ -134,7 +134,7 @@ def filter_inputs(inputs,dmatrix_file):
     precomputed_mces = []
     with h5py.File(dmatrix_file,'r') as hf:
             mces = hf["mces"][:]
-            all_smiles = [s.decode() for s in hf['mces_smiles_order'][:]]
+            all_smiles =hf['mces_smiles_order'][:]  #Decoding will result in not finding any value since hdf input process wont decode either! [s.decode() for s in hf['mces_smiles_order'][:]]
     mces = squareform(mces)
     smiles_index = {}
     for i, smiles in enumerate(all_smiles):
@@ -146,8 +146,9 @@ def filter_inputs(inputs,dmatrix_file):
         if idx1 is not None and idx2 is not None:
             val = mces[idx1][idx2]
             if val != -1:
-                precomputed_mces.append((i, val))
-                continue
+                if threshold is None or val < threshold:
+                    precomputed_mces.append((i, val))
+                    continue
         
         filtered_inputs.append((i, s1, s2))
     print(f"done, took {(time.time() - t0) / 60:.1f}min and found {len(precomputed_mces)} in libary, {len(filtered_inputs)} to go")
@@ -191,8 +192,10 @@ def main():
     parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
     parser.add_argument('--jobs_dispatch', default='10*n_jobs', help='(experimental) pre-dispatch of jobs for parallelization')
     parser.add_argument('--use_matrix_lookup', help='(experimental) when a matrix with allready calculated mces is given, ' \
-    'the solver will filter all calculated mces to prevent unneeded computetation. ' \
-    'Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`)')
+                        'the solver will filter all calculated mces to prevent unneeded computetation. ' \
+                        'Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`)')
+    parser.add_argument('--lookup_threshold', help='(experimental) when a lookup matrix is given and you want to update to a certain threshold.' \
+                        ' This will ignore found mces equal or above the given threshold.', default=None)
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
@@ -218,7 +221,7 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
     
     if args.use_matrix_lookup:
-        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup)
+        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
     else:
         inputs_to_process, results = inputs, []
 
