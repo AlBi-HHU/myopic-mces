@@ -195,7 +195,7 @@ def main():
                         'the solver will filter all calculated mces to prevent unneeded computetation. ' \
                         'Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`)')
     parser.add_argument('--lookup_threshold', help='(experimental) when a lookup matrix is given and you want to update to a certain threshold.' \
-                        ' This will ignore found mces equal or above the given threshold.', default=None)
+                        ' This will ignore found mces equal or above the given threshold.', default=None,type=float)
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
