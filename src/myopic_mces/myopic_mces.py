@@ -149,7 +149,7 @@ def filter_inputs(inputs,dmatrix_file,threshold=None):
             val = mces[idx1][idx2]
             if val != -1:
                 if threshold is None or val < threshold:
-                    precomputed_mces.append((i, val))
+                    precomputed_mces.append((i, val,-1,-1))
                     continue
         
         filtered_inputs.append((i, s1, s2))
