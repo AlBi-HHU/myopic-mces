@@ -115,9 +115,11 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
         assert list(indices[:, 0]) == [row[0] for row in results], 'something went wrong with the index order' # TODO: this could also be fixed, but just shouldn't happen
         f.create_dataset('mces', data=[row[1] for row in results], compression='gzip')
         if (write_times):
-            f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
+            f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in results], compression='gzip')
+            # f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
         if (write_modes):
-            f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
+            f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in results], compression='gzip') # TODO "new compute mode" -> prefetched ?
+            # f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
         comp_args = f.create_group('computation_args')
         for k, v in args:
             if v is not None:
@@ -221,6 +223,7 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
     
     if args.use_matrix_lookup:
+
         inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
     else:
         inputs_to_process, results = inputs, []
