@@ -126,7 +126,6 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
                 comp_args[k] = v
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
 
-# TODO this can also be added to the "combine_batches" function to reduce the times this libary file needs to be loaded in. 
 def filter_inputs(inputs,dmatrix_file,threshold=None):
     from scipy.spatial.distance import squareform
     import h5py
