@@ -142,6 +142,3 @@ if __name__ == '__main__':
             pairs_counter += len(batch_pairs)
             batch_counter += 1
         assert pairs_counter == len(pairs)
-
-
-# --no_shuffle --batch_size 10000 --use_matrix_lookup example\exampleLookup.hdf5 --hdf5_mode C:\Users\mrbri\Desktop\mces-model\myopic-mces\example\example_data2.csv .
