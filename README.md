@@ -8,7 +8,7 @@ Input and Output file are in csv format. Every line in the input-file is one com
 
 input-file: `index,SMILES1,SMILES2`
 
-output-file: `index,time taken,myopic MCES distance,status (1 if exact distance, 2/4 if lower bound)`
+output-file: `index,myopic MCES distance,time taken,computation mode`
 
 Download via pip and execute:
 ```bash
