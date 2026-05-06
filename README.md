@@ -35,7 +35,7 @@ General options
 ```
 --threshold  int         Threshold for the comparison.
                          Exact distance is only calculated if the distance is lower than the threshold.
-                         If set to -1 the exact disatnce is always calculated.
+                         If set to -1 the exact distance is always calculated.
 
 --solver string          Solver used for solving the ILP. Examples:'CPLEX_CMD', 'GUROBI_CMD', 'GLPK_CMD'
 
