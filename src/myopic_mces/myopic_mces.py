@@ -195,7 +195,7 @@ def main():
                         'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
                         '(`mces_smiles_order`), like the HDF5 files produced by this script. '
                         'NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`', action='store_true')
-    parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`:  '
+    parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`: '
                         'Precomputed values equal or greater than the threshold will be ignored; these '
                         'instances will be recomputed', default=None, type=float)
     args = parser.parse_args()
