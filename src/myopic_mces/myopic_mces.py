@@ -116,10 +116,8 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
         f.create_dataset('mces', data=[row[1] for row in results], compression='gzip')
         if (write_times):
             f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in results], compression='gzip')
-            # f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
         if (write_modes):
-            f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in results], compression='gzip') # TODO "new compute mode" -> prefetched ?
-            # f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
+            f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in results], compression='gzip')
         comp_args = f.create_group('computation_args')
         for k, v in args:
             if v is not None:
@@ -192,11 +190,13 @@ def main():
                         'the computations, instances that failed to compute receive distance "-1"')
     parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
     parser.add_argument('--jobs_dispatch', default='10*n_jobs', help='(experimental) pre-dispatch of jobs for parallelization')
-    parser.add_argument('--use_matrix_lookup', help='(experimental) when a matrix with allready calculated mces is given, ' \
-                        'the solver will filter all calculated mces to prevent unneeded computetation. ' \
-                        'Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`)')
-    parser.add_argument('--lookup_threshold', help='(experimental) when a lookup matrix is given and you want to update to a certain threshold.' \
-                        ' This will ignore found mces equal or above the given threshold.', default=None,type=float)
+    parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
+                        'path to a HDF5 file with precomputed MCES distances. Computation for these instances will be '
+                        'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
+                        '(`mces_smiles_order`), like the HDF5 files produced by this script', action='store_true')
+    parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`:  '
+                        'Precomputed values equal or greater than the threshold will be ignored; these '
+                        'instances will be recomputed', default=None, type=float)
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
