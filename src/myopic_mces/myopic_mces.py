@@ -193,7 +193,8 @@ def main():
     parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
                         'path to a HDF5 file with precomputed MCES distances. Computation for these instances will be '
                         'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
-                        '(`mces_smiles_order`), like the HDF5 files produced by this script', action='store_true')
+                        '(`mces_smiles_order`), like the HDF5 files produced by this script. '
+                        'NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`', action='store_true')
     parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`:  '
                         'Precomputed values equal or greater than the threshold will be ignored; these '
                         'instances will be recomputed', default=None, type=float)
@@ -222,7 +223,6 @@ def main():
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
     
     if args.use_matrix_lookup:
-
         inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
     else:
         inputs_to_process, results = inputs, []

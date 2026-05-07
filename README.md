@@ -64,12 +64,9 @@ Experimental options for myopic MCES distance computation
                              when this bound is already greater than the threshold. By default (without
                              this option), always the strongest lower bound will be computed and used.
 
---use_matrix_lookup          When a matrix with allready calculated mces is given, the solver will filter 
-                             all calculated mces to prevent unneeded computetation. Has to contain 2 datasets with (`mces`) and another dataset with the corresponding SMILES (`mces_smiles_order`). 
-                             Node: When used in combination with `prepare_input` only use with `--no_shuffle`.
+--use_matrix_lookup          Use with the path to a HDF5 file with precomputed MCES distances. Computation for these instances will be skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES (`mces_smiles_order`), like the HDF5 files produced by this script. NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`
 
---lookup_threshold           When a lookup matrix is given and you want to update to a certain threshold.
-                             This will ignore found mces equal or above the given threshold.
+--lookup_threshold           Use with `--use_matrix_lookup`:  Precomputed values equal or greater than the threshold will be ignored; these instances will be recomputed
 
 ```
 
