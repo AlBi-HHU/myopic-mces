@@ -8,6 +8,17 @@ Created on Sat Oct 17 17:59:05 2020
 import networkx as nx
 from typing import DefaultDict
 import numpy as np
+from enum import Enum
+
+class ComputationMode(Enum):
+    EXACT = 1                   # exact computation via ILP
+    ABOVE_THRESHOLD = 2         # exact computation tried, but would be above threshold -> threshold returned
+    DYNAMIC_BOUND0 = 20         # bound chosen dynamically -> bound 0 used
+    DYNAMIC_BOUND1 = 21         # bound chosen dynamically -> bound 1 used
+    DYNAMIC_BOUND2 = 22         # bound chosen dynamically -> bound 2 used
+    STRONGEST_BOUND = 4         # strongest bound was used (`bound 2` currently)
+    TIMEOUT_EXACT_SOLUTION = 5  # timeout reached during exact computation, unproven solution
+    TIMEOUT_BOUND = 6           # timeout, bound returned as no solution was found
 
 # def filter0_nographs(s1, s2):
 #     counts = np.zeros((2, 118)) # to be extra sure ;)
@@ -261,17 +272,17 @@ def apply_filter(G1,G2,threshold,always_stronger_bound=True,use_bound_zero=False
     """
     if always_stronger_bound:
         d=filter2(G1,G2)
-        return d, 4
+        return d, ComputationMode.STRONGEST_BOUND.value
     else:
         if (use_bound_zero):
             # zero lower bound
             d=filter0(G1,G2)
             if (d > threshold):
-                return d, 20
+                return d, ComputationMode.DYNAMIC_BOUND0.value
         #calculate first lower bound
         d=filter1(G1,G2)
         if (d > threshold):
-            return d, 21
+            return d, ComputationMode.DYNAMIC_BOUND1.value
         #calculate second lower bound
         d=filter2(G1,G2)
-        return d, 22
+        return d, ComputationMode.DYNAMIC_BOUND2.value
