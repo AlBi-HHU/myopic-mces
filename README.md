@@ -37,7 +37,7 @@ General options
                          Exact distance is only calculated if the distance is lower than the threshold.
                          If set to -1 the exact distance is always calculated.
 
---solver string          Solver used for solving the ILP. Examples:'CPLEX_CMD', 'GUROBI_CMD', 'GLPK_CMD'
+--solver string          Solver used for solving the ILP. Examples:'CPLEX_CMD', 'GUROBI_CMD', 'GLPK_CMD'.
 
 --num_jobs int           Number of jobs; instances to run in parallel.
                          By default this is set to the number of (logical) CPU cores.
@@ -51,7 +51,7 @@ Options for the ILP solver
 --solver_onethreaded    Limit ILP solver to one thread, likely resulting in faster
                         performance with parallel computations (not available for all solvers).
 
---solver_no_msg         Prevent solver from logging (not available for all solvers)
+--solver_no_msg         Prevent solver from logging (not available for all solvers).
 
 ```
 
@@ -63,10 +63,18 @@ Experimental options for myopic MCES distance computation
 --choose_bound_dynamically   If set, a potentially weaker but faster lower bound will be computed and used
                              when this bound is already greater than the threshold. By default (without
                              this option), always the strongest lower bound will be computed and used.
+                             
+--use_bound_zero             If set alongside `--choose_bound_dynamically`, an additional very weak but fast 
+                             molecular formula-based bound will be used.
 
---use_matrix_lookup          Use with the path to a HDF5 file with precomputed MCES distances. Computation for these instances will be skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES (`mces_smiles_order`), like the HDF5 files produced by this script. NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`
+--use_matrix_lookup          Use with the path to a HDF5 file with precomputed MCES distances. Computation for 
+                             these instances will be skipped, using the provided values. HDF5 has to contain 
+                             distances (key `mces`) and SMILES (`mces_smiles_order`), like the HDF5 files 
+                             produced by this script. NOTE: When used in combination with `prepare_input`, 
+                             only use with `--no_shuffle`,
 
---lookup_threshold           Use with `--use_matrix_lookup`:  Precomputed values equal or greater than the threshold will be ignored; these instances will be recomputed
+--lookup_threshold           Use with `--use_matrix_lookup`:  Precomputed values equal or greater than the 
+                             threshold will be ignored; these instances will be recomputed.
 
 ```
 
