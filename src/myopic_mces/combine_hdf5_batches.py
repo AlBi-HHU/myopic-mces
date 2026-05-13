@@ -17,6 +17,7 @@ if __name__ == '__main__':
         ninstances = int(binom(len(smiles), 2))
 
     all_indices = np.empty((ninstances, 3), dtype='int64')
+    # TODO: adapt for ds1 x ds2 mode
     all_mces = np.empty((ninstances,), dtype='float32')
 
     i = 0

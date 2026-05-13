@@ -6,6 +6,35 @@ Created on Sat Oct 17 17:59:05 2020
 """
 
 import networkx as nx
+from typing import DefaultDict
+import numpy as np
+from enum import Enum
+
+class ComputationMode(Enum):
+    EXACT = 1                   # exact computation via ILP
+    ABOVE_THRESHOLD = 2         # exact computation tried, but would be above threshold -> threshold returned
+    DYNAMIC_BOUND0 = 20         # bound chosen dynamically -> bound 0 used
+    DYNAMIC_BOUND1 = 21         # bound chosen dynamically -> bound 1 used
+    DYNAMIC_BOUND2 = 22         # bound chosen dynamically -> bound 2 used
+    STRONGEST_BOUND = 4         # strongest bound was used (`bound 2` currently)
+    TIMEOUT_EXACT_SOLUTION = 5  # timeout reached during exact computation, unproven solution
+    TIMEOUT_BOUND = 6           # timeout, bound returned as no solution was found
+
+# def filter0_nographs(s1, s2):
+#     counts = np.zeros((2, 118)) # to be extra sure ;)
+#     # for i, c in enumerate()
+
+def filter0(G1,G2):
+    elems1 = DefaultDict(int)
+    elems2 = DefaultDict(int)
+    for a in G1.nodes.values():
+        elems1[a['atom']] += 1
+    for a in G2.nodes.values():
+        elems2[a['atom']] += 1
+    cost = 0
+    for elem in set(elems1) | set(elems2):
+        cost += np.abs(elems1[elem] - elems2[elem])
+    return cost
 
 def filter1(G1,G2):
     """
@@ -214,7 +243,7 @@ def filter2(G1,G2):
 
     return res
 
-def apply_filter(G1,G2,threshold,always_stronger_bound=True):
+def apply_filter(G1,G2,threshold,always_stronger_bound=True,use_bound_zero=False):
     """
      Finds a lower bound for the distance
 
@@ -228,6 +257,8 @@ def apply_filter(G1,G2,threshold,always_stronger_bound=True):
          Threshold for the comparison. We want to find a lower bound that is higher than the threshold
      always_stronger_bound : bool
          if true, always compute and use the second stronger bound
+     use_bound_zero : bool
+         if true, also use an additional weak (molecular formula-based) filter
 
 
 
@@ -241,14 +272,17 @@ def apply_filter(G1,G2,threshold,always_stronger_bound=True):
     """
     if always_stronger_bound:
         d=filter2(G1,G2)
-        return d, 4
+        return d, ComputationMode.STRONGEST_BOUND.value
     else:
+        if (use_bound_zero):
+            # zero lower bound
+            d=filter0(G1,G2)
+            if (d > threshold):
+                return d, ComputationMode.DYNAMIC_BOUND0.value
         #calculate first lower bound
         d=filter1(G1,G2)
-        #if below threshold calculate second lower bound
-        if d<=threshold:
-            d=filter2(G1,G2)
-            if d<=threshold:
-                return d, 2
-
-        return d, 2
+        if (d > threshold):
+            return d, ComputationMode.DYNAMIC_BOUND1.value
+        #calculate second lower bound
+        d=filter2(G1,G2)
+        return d, ComputationMode.DYNAMIC_BOUND2.value

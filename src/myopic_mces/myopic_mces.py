@@ -12,7 +12,9 @@ from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
 from myopic_mces.filter_MCES import apply_filter
 
-def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={}, no_ilp_threshold=False, always_stronger_bound=True, catch_errors=False):
+def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={},
+         no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
+         catch_errors=False):
     """
     Calculates the distance between two molecules
 
@@ -35,6 +37,10 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
         if true, always return exact distance even if it is below the threshold (slower)
     always_stronger_bound: bool
         if true, always compute and use the second stronger bound
+    use_bound_zero : bool
+        if true, also use an additional weak (molecular formula-based) filter
+    catch_errors : bool
+         if true, return distance -1 when errors are encountered
 
     Returns:
     -------
@@ -58,7 +64,8 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
         try:
-            distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound)
+            distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound,
+                                                  use_bound_zero=use_bound_zero)
             if distance > threshold:
                 return i, distance, time.time() - start, compute_mode
         except Exception as e:
@@ -68,6 +75,9 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
                 compute_mode = 2
             else:
                 raise e
+    # store the filter results
+    distance_filter = distance
+    compute_mode_filter = compute_mode
     # calculate MCES
     try:
         distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
@@ -79,6 +89,10 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
             compute_mode = 1
         else:
             raise e
+    # if ILP computation does not have a results because the time limit was reached, use the filter
+    if (distance == -1 and compute_mode == 5):
+        distance = distance_filter
+        compute_mode = 6
     return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):
@@ -101,14 +115,43 @@ def hdf5_output(results, file_path, write_times=True, write_modes=True, args={})
         assert list(indices[:, 0]) == [row[0] for row in results], 'something went wrong with the index order' # TODO: this could also be fixed, but just shouldn't happen
         f.create_dataset('mces', data=[row[1] for row in results], compression='gzip')
         if (write_times):
-            f.create_dataset('computation_times', data=[row[2] for row in results], compression='gzip')
+            f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in results], compression='gzip')
         if (write_modes):
-            f.create_dataset('computation_modes', data=[row[3] for row in results], dtype='uint8', compression='gzip')
+            f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in results], compression='gzip')
         comp_args = f.create_group('computation_args')
         for k, v in args:
             if v is not None:
                 comp_args[k] = v
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
+
+def filter_inputs(inputs,dmatrix_file,threshold=None):
+    from scipy.spatial.distance import squareform
+    import h5py
+    print('filtering for precomputed mces')
+    t0 = time.time()
+    filtered_inputs = []
+    precomputed_mces = []
+    with h5py.File(dmatrix_file,'r') as hf:
+            mces = hf["mces"][:]
+            all_smiles =hf['mces_smiles_order'][:]  #Decoding will result in not finding any value since hdf input process wont decode either! [s.decode() for s in hf['mces_smiles_order'][:]]
+    mces = squareform(mces)
+    smiles_index = {}
+    for i, smiles in enumerate(all_smiles):
+        smiles_index[smiles] = i
+    for i, s1, s2 in inputs:
+        idx1 = smiles_index.get(s1)
+        idx2 = smiles_index.get(s2)
+        
+        if idx1 is not None and idx2 is not None:
+            val = mces[idx1][idx2]
+            if val != -1:
+                if threshold is None or val < threshold:
+                    precomputed_mces.append((i, val,-1,-1))
+                    continue
+        
+        filtered_inputs.append((i, s1, s2))
+    print(f"done, took {(time.time() - t0) / 60:.1f}min and found {len(precomputed_mces)} in libary, {len(filtered_inputs)} to go")
+    return filtered_inputs, precomputed_mces
 
 def main():
     parser = argparse.ArgumentParser()
@@ -124,6 +167,9 @@ def main():
                         help='if this is set, compute and use potentially weaker but faster lower bound if '
                         'already greater than the threshold. Otherwise (default), the strongest lower bound '
                         'is always computed and used. Enabling this can lead to massive speedups.')
+    parser.add_argument('--use_bound_zero', action='store_true',
+                        help='if this is set, compute and use an additional weak molecular formula-based '
+                        'lower bound. Use in conjunction with `choose_bound_dynamically`.')
     parser.add_argument('--solver', type=str, default='default',
                         action='store', help='Solver for the ILP. example:CPLEX_CMD')
     parser.add_argument('--solver_onethreaded', action='store_true',
@@ -131,6 +177,8 @@ def main():
                         'performance with parallel computations (not available for all solvers)')
     parser.add_argument('--solver_no_msg', action='store_true',
                         help='prevent solver from logging (not available for all solvers)')
+    parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
+                        help='EXPERIMENTAL: set a time limit for the ILP solver, solutions will not be exact anymore!')
     parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
                         'By default this is set to the number of (logical) CPU cores.', default=-1)
     parser.add_argument('--hdf5_mode', action='store_true',
@@ -142,6 +190,14 @@ def main():
                         'the computations, instances that failed to compute receive distance "-1"')
     parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
     parser.add_argument('--jobs_dispatch', default='10*n_jobs', help='(experimental) pre-dispatch of jobs for parallelization')
+    parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
+                        'path to a HDF5 file with precomputed MCES distances. Computation for these instances will be '
+                        'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
+                        '(`mces_smiles_order`), like the HDF5 files produced by this script. '
+                        'NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`', action='store_true')
+    parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`: '
+                        'Precomputed values equal or greater than the threshold will be ignored; these '
+                        'instances will be recomputed', default=None, type=float)
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
@@ -151,20 +207,31 @@ def main():
 
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically,
+                                   use_bound_zero=args.use_bound_zero,
                                    catch_errors=args.catch_computation_errors)
     if (args.solver_onethreaded):
         additional_mces_options['solver_options']['threads'] = 1
     if (args.solver_no_msg):
         additional_mces_options['solver_options']['msg'] = False
+    if (args.solver_time_limit_seconds is not None):
+        additional_mces_options['solver_options']['timeLimit'] = args.solver_time_limit_seconds
 
     if (args.hdf5_mode):
         inputs = hdf5_input(args.input)
     else:
         with open(args.input) as in_handle:
             inputs = [line.strip().split(',')[:3] for line in in_handle] # ignores extra input columns
+    
+    if args.use_matrix_lookup:
+        inputs_to_process, results = filter_inputs(inputs=inputs, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
+    else:
+        inputs_to_process, results = inputs, []
 
-    results = Parallel(n_jobs=args.num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
-        delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs)
+    results += Parallel(n_jobs=args.num_jobs, verbose=5, batch_size=args.jobs_batch_size, pre_dispatch=args.jobs_dispatch)(
+            delayed(MCES)(smiles1, smiles2, args.threshold, i, args.solver, **additional_mces_options) for i, smiles1, smiles2 in inputs_to_process)
+
+    if args.use_matrix_lookup:
+        results.sort(key=lambda x: x[0])
 
     if (args.hdf5_mode):
         hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())

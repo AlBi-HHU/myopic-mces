@@ -6,10 +6,11 @@ Created on Mon Oct  5 17:17:41 2020
 """
 import pulp
 import networkx as nx
+from myopic_mces.filter_MCES import ComputationMode
 
-def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
+def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     """
-     Calculates the exact distance between two molecules using an ILP
+     Constructs the ILP for calculating the exact distance between two molecules
 
      Parameters
      ----------
@@ -19,22 +20,13 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
          Graph representing the second molecule.
      threshold : float
          Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
-     solver: string
-         ILP-solver used for solving MCES. Example:CPLEX_CMD
-     solver_options: dict
-         additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
      no_ilp_threshold: bool
          if true, always return exact distance even if it is below the threshold (slower)
 
      Returns:
      -------
-     float
-         Distance between the molecules
-     int
-         Type of Distance:
-             1 : Exact Distance
-             2 : Lower bound (If the exact distance is above the threshold)
-
+     pulp.LpProblem
+         ILP
     """
 
     ILP=pulp.LpProblem("MCES", pulp.LpMinimize)
@@ -45,7 +37,7 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
         for j in G2.nodes:
             if G1.nodes[i]["atom"]==G2.nodes[j]["atom"]:
                 nodepairs.append(tuple([i,j]))
-    y=pulp.LpVariable.dicts('nodepairs', nodepairs,
+    y=ILP.add_variable_dicts('nodepairs', nodepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
@@ -65,7 +57,7 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     for j in G2.edges:
         edgepairs.append(tuple([-1,j]))
         w[tuple([-1,j])]=G2[j[0]][j[1]]["weight"]
-    c=pulp.LpVariable.dicts('edgepairs', edgepairs,
+    c=ILP.add_variable_dicts('edgepairs', edgepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
@@ -149,6 +141,41 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     if threshold!=-1 and not no_ilp_threshold:
         ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
 
+    return ILP
+
+
+def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
+    """
+     Calculates the exact distance between two molecules using an ILP
+
+     Parameters
+     ----------
+     G1 : networkx.classes.graph.Graph
+         Graph representing the first molecule.
+     G2 : networkx.classes.graph.Graph
+         Graph representing the second molecule.
+     threshold : float
+         Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
+     solver: string
+         ILP-solver used for solving MCES. Example:CPLEX_CMD
+     solver_options: dict
+         additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
+     no_ilp_threshold: bool
+         if true, always return exact distance even if it is below the threshold (slower)
+
+     Returns:
+     -------
+     float
+         Distance between the molecules
+     int
+         Type of Distance:
+             1 : Exact Distance
+             2 : Lower bound (If the exact distance is above the threshold)
+
+    """
+
+    ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold)
+
     #solve the ILP
     if solver=="default":
         sol=pulp.getSolver(solver="PULP_CBC_CMD", **solver_options)
@@ -156,7 +183,47 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     else:
         sol=pulp.getSolver(solver, **solver_options)
         ILP.solve(sol)
-    if ILP.status==1:
-        return float(ILP.objective.value()),1
+
+    ilp_code = ILP.status
+    try:
+        ilp_code_detailed = ILP.solverModel.solution.get_status()
+        ilp_code_time_limit_feasible = ILP.solverModel.solution.status.MIP_time_limit_feasible
+        ilp_code_time_limit_infeasible = ILP.solverModel.solution.status.MIP_time_limit_infeasible
+    except AttributeError:
+        # only works for some solvers, namely CPLEX_PY
+        ilp_code_detailed = ilp_code_time_limit_feasible = ilp_code_time_limit_infeasible = None
+
+    if ilp_code == pulp.constants.LpStatusOptimal:
+        if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_feasible:
+            # hit time limit, but still found a solution
+            return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
+        return float(ILP.objective.value()), ComputationMode.EXACT.value
+    elif ilp_code == pulp.constants.LpStatusInfeasible:
+        if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_infeasible:
+            # hit time limit, no solution
+            return -1, ComputationMode.TIMEOUT_EXACT_SOLUTION.value       # TODO: now we should use a filter
+        return threshold, ComputationMode.ABOVE_THRESHOLD.value
+    # elif ilp_code == pulp.constants.LpStatusNotSolved:
+    #     # must be time limit
+    #     return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
     else:
-        return threshold,2
+        raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
+
+def add_MCES_to_molgraphs(G1, G2, solver='CPLEX_CMD'):
+    import re
+    ILP = construct_ILP(G1, G2, threshold=-1)
+    sol=pulp.getSolver(solver, msg=False)
+    ILP.solve(sol)
+    for v in ILP.variables():
+        if (v.name.startswith('nodepairs_')):
+            i, j = map(int, re.findall(r'\d+', v.name.split('_', 1)[1]))
+            G1.nodes[i]['in_mces'] = True
+            G2.nodes[j]['in_mces'] = True
+        elif (v.name.startswith('edgepairs_') and len(indices:=list(map(int, re.findall(r'\d+', v.name))))==4):
+            i1, j1, i2, j2 = indices
+            G1.edges[(i1, j1)]['in_mces'] = True
+            G2.edges[(i2, j2)]['in_mces'] = True
+        # elif (v.name.startswith('edgepairs_(_1,')):
+        #     # edge of the second graph is *not* part of MCES
+        #     _, i, j = map(int, re.findall(r'\d+', v.name))
+        #     G2.edges[(i, j)]['in_mces'] = True

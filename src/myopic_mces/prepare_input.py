@@ -4,6 +4,36 @@ from os.path import join, exists
 from os import mkdir
 import numpy as np
 
+def filter_inputs(smiles_list,index,dmatrix_file,threshold=None):
+    from scipy.spatial.distance import squareform
+    import h5py
+    print('filtering for precomputed mces')
+    filtered_inputs = []
+    precomputed_mces = []
+    precomputed_index = []
+    with h5py.File(dmatrix_file,'r') as hf:
+            mces = hf["mces"][:]
+            all_smiles =[s.decode() for s in hf['mces_smiles_order'][:]] # Since here the input is csv we need to decode the lookup
+    mces = squareform(mces)
+    smiles_index = {}
+    for i, smiles in enumerate(all_smiles):
+        smiles_index[smiles] = i
+    for i, s1, s2 in index:
+        idx1 = smiles_index.get(smiles_list[s1])
+        idx2 = smiles_index.get(smiles_list[s2])
+        
+        if idx1 is not None and idx2 is not None:
+            val = mces[idx1][idx2]
+            if val != -1:
+                if threshold is None or val < threshold:
+                    precomputed_mces.append((i, val,-1,-1))
+                    precomputed_index.append([i, s1, s2])
+                    continue
+        
+        filtered_inputs.append([i, s1, s2])
+    return np.array(filtered_inputs),np.array(precomputed_index) ,precomputed_mces
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('input_file', help='readily formatedd myopic_mces input OR list of smiles for `h5`-mode')
@@ -14,6 +44,13 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=224960 * 100)
     parser.add_argument('--batch_start', type=int, default=0)
     parser.add_argument('--no_shuffle', action='store_true')
+    parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
+                        'path to a HDF5 file with precomputed MCES distances. Computation for these instances will be '
+                        'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
+                        '(`mces_smiles_order`), like the HDF5 files produced by this script. ', action='store_true')
+    parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`: '
+                        'Precomputed values equal or greater than the threshold will be ignored; these '
+                        'instances will be recomputed', default=None, type=float)
     args = parser.parse_args()
 
     if (args.hdf5_mode):
@@ -32,7 +69,6 @@ if __name__ == '__main__':
             nbatches = int(np.ceil(ninstances/args.batch_size))
             print(f'read {len(smiles_input1):_}*{len(smiles_input2):_} SMILES as input -> {ninstances:_} instances '
                   f'-> {nbatches} batches of {args.batch_size:_}')
-            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
             print('creating full index array')
             index_array_full = np.zeros((ninstances, 3), dtype='int64')
             index_array_full[:, 0] = np.arange(ninstances)
@@ -49,7 +85,6 @@ if __name__ == '__main__':
                 raise Exception('too many instances:', ninstances)
             nbatches = int(np.ceil(ninstances/args.batch_size))
             print(f'read {n:_} SMILES as input -> {ninstances:_} instances -> {nbatches} batches of {args.batch_size:_}')
-            settings = dict(threshold=args.threshold, choose_bound_dynamically=args.choose_bound_dynamically)
             print('creating full index array')
             index_array_full = np.zeros((ninstances, 3), dtype='int64')
             index_array_full[:, 0] = np.arange(ninstances)
@@ -57,21 +92,37 @@ if __name__ == '__main__':
         if (not args.no_shuffle):
             print('shuffling full index array')
             np.random.shuffle(index_array_full)
+        if args.use_matrix_lookup:
+            index_array_full, precomputed_index,precomputed_mces = filter_inputs(smiles_list=smiles_input,index=index_array_full, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
+            print(f'Found {len(precomputed_index):_} precomputed MCES -> {len(index_array_full):_} instances left to compute'
+                  f'-> {int(np.ceil(index_array_full.shape[0]/args.batch_size))} batches of {args.batch_size:_} and 1 precomputed batch')
         # splitting
         if (not exists(args.out_folder)):
             mkdir(args.out_folder)
         print('creating batches')
-        for i, batch in enumerate(np.array_split(index_array_full, (index_array_full.shape[0]/args.batch_size)+1)):
-            file_path = join(args.out_folder, f'batch{i}.hdf5')
-            print(f'creating batch {i} at {file_path}...', end=' ')
-            with h5py.File(file_path, 'w') as f:
-                f.create_dataset('computation_indices', data=batch, dtype='int64', compression='gzip')
-                f.create_dataset('smiles', data=smiles_input)
-                settings_group = f.create_group('settings')
-                for k, v in settings.items():
-                    settings_group[k] = v
-                f.attrs['original_path'] = file_path
-            print('done')
+        if index_array_full.shape[0] >0:
+            for i, batch in enumerate(np.array_split(index_array_full, (index_array_full.shape[0]/args.batch_size)+1)):
+                file_path = join(args.out_folder, f'batch{i}.hdf5')
+                print(f'creating batch {i} at {file_path}...', end=' ')
+                with h5py.File(file_path, 'w') as f:
+                    f.create_dataset('computation_indices', data=batch, dtype='int64', compression='gzip')
+                    f.create_dataset('smiles', data=smiles_input)
+                    f.attrs['original_path'] = file_path
+                print('done')
+        else:
+            print("Nothing to compute, everything cached")
+            i = -1 # Hacky but for now needed if all smiles are found in the lookup
+        if args.use_matrix_lookup:
+            if precomputed_index.shape[0]>0:
+                file_path = join(args.out_folder, f'batch{i+1}.hdf5')
+                print(f'creating batch {i+1} at {file_path} with precomputed mces...', end=' ')
+                with h5py.File(file_path, 'w') as f:
+                    f.create_dataset('computation_indices', data=precomputed_index, dtype='int64', compression='gzip')
+                    f.create_dataset('mces', data=[row[1] for row in precomputed_mces], compression='gzip')
+                    f.create_dataset('smiles', data=smiles_input)
+                    f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in precomputed_mces], compression='gzip')
+                    f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in precomputed_mces], compression='gzip')         
+                print('done')
     else:
         pairs = [line.strip() for line in open(args.input_file).readlines() if not line.startswith('i,smiles')]
         print('pairs read')
