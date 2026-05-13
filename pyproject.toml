@@ -26,3 +26,15 @@ myopic_mces = "myopic_mces.myopic_mces:main"
 "Homepage" = "https://github.com/AlBi-HHU/myopic-mces"
 "Bug Tracker" = "https://github.com/AlBi-HHU/myopic-mces/issues"
 "Publication" = "https://doi.org/10.1101/2023.03.27.534311"
+
+[project.optional-dependencies]
+cplex = [
+    "cplex>=22.1.1.2",
+    "docplex>=2.32.264",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pandas>=2.0.3",
+]

@@ -6,6 +6,7 @@ Created on Mon Oct  5 17:17:41 2020
 """
 import pulp
 import networkx as nx
+from myopic_mces.filter_MCES import ComputationMode
 
 def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     """
@@ -36,7 +37,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
         for j in G2.nodes:
             if G1.nodes[i]["atom"]==G2.nodes[j]["atom"]:
                 nodepairs.append(tuple([i,j]))
-    y=pulp.LpVariable.dicts('nodepairs', nodepairs,
+    y=ILP.add_variable_dicts('nodepairs', nodepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
@@ -56,7 +57,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     for j in G2.edges:
         edgepairs.append(tuple([-1,j]))
         w[tuple([-1,j])]=G2[j[0]][j[1]]["weight"]
-    c=pulp.LpVariable.dicts('edgepairs', edgepairs,
+    c=ILP.add_variable_dicts('edgepairs', edgepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
@@ -195,16 +196,16 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
     if ilp_code == pulp.constants.LpStatusOptimal:
         if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_feasible:
             # hit time limit, but still found a solution
-            return float(ILP.objective.value()), 5
-        return float(ILP.objective.value()), 1
+            return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
+        return float(ILP.objective.value()), ComputationMode.EXACT.value
     elif ilp_code == pulp.constants.LpStatusInfeasible:
         if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_infeasible:
             # hit time limit, no solution
-            return -1, 5        # TODO: now we should use a filter
-        return threshold, 2
+            return -1, ComputationMode.TIMEOUT_EXACT_SOLUTION.value       # TODO: now we should use a filter
+        return threshold, ComputationMode.ABOVE_THRESHOLD.value
     # elif ilp_code == pulp.constants.LpStatusNotSolved:
     #     # must be time limit
-    #     return float(ILP.objective.value()), 5
+    #     return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
     else:
         raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
 
@@ -226,23 +227,3 @@ def add_MCES_to_molgraphs(G1, G2, solver='CPLEX_CMD'):
         #     # edge of the second graph is *not* part of MCES
         #     _, i, j = map(int, re.findall(r'\d+', v.name))
         #     G2.edges[(i, j)]['in_mces'] = True
-
-def test_ILP_status():
-    from myopic_mces.graph import construct_graph
-
-    longs1 = 'CCCCCCCCCCCCCCCCCCCC(=O)OCC(COC(=O)CCCCCCCCCCCC=CCCCCCCCC)OC(=O)CCCCCCCCCCCCCC'
-    longs2 = 'CCCCCCCCCCCCCCCCCCCCCC(=O)OC(COC(=O)CCCCCCCCCCCCCCCCC)COC(=O)CCCCCCCC=CCCCCCCCC'
-
-    for s1, s2, thr, time_limit, status_exp in [('CCC', 'CCCCCCCC', 2., None, pulp.constants.LpStatusInfeasible),
-                                                ('CCC', 'CCCCCCCC', 10., None, pulp.constants.LpStatusOptimal),
-                                                (longs1, longs2, 10., 10, pulp.constants.LpStatusInfeasible),
-                                                (longs1, longs2, 10., 150, pulp.constants.LpStatusOptimal),
-                                    ]:
-            sol=pulp.getSolver('CPLEX_PY', threads=1, timeLimit=time_limit)
-            ILP = construct_ILP(construct_graph(s1), construct_graph(s2), thr)
-            ILP.solve(sol)
-            st = ILP.status
-            st_detailed = ILP.solverModel.solution.get_status()
-            print('status expected:', pulp.constants.LpStatus[status_exp], 'status actual:', pulp.constants.LpStatus[st],
-                  'status detailed:', st_detailed, 'MIP_time_limit_feasible?', st_detailed == ILP.solverModel.solution.status.MIP_time_limit_feasible,
-                  'MIP_time_limit_infeasible?', st_detailed == ILP.solverModel.solution.status.MIP_time_limit_infeasible)
