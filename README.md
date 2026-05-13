@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml/badge.svg)](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml)
 [![PyPI version](https://img.shields.io/pypi/v/myopic-mces)](https://pypi.org/project/myopic-mces/)
-[![Python versions](https://img.shields.io/pypi/pyversions/myopic-mces)](https://pypi.org/project/myopic-mces/)
+[![Python version](https://img.shields.io/badge/python-%3E%3D3.8-blue)](https://www.python.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41467--024--55462--w-blue)](https://doi.org/10.1038/s41467-024-55462-w)
 
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
