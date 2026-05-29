@@ -10,9 +10,9 @@ import argparse
 import sys
 from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
-from myopic_mces.filter_MCES import apply_filter
+from myopic_mces.filter_MCES import apply_filter, ComputationMode
 
-def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={},
+def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
          catch_errors=False):
     """
@@ -30,7 +30,7 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
     i : int
         index, mainly for parallelization
     solver: string
-        ILP-solver used for solving MCES. Example:CPLEX_CMD
+        ILP-solver used for solving MCES. Example: CPLEX_PY
     solver_options: dict
         additional options to pass to solvers. Example: threads=1 for better multi-threaded performance
     no_ilp_threshold: bool
@@ -55,12 +55,16 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
             1 : Exact Distance
             2 : Lower bound (if the exact distance is above the threshold; bound chosen dynamically)
             4 : Lower bound (second lower bound was used)
+            6 : Timelimit reached, no solution found
+            7 : (CBC solver only) timelimit reached, unknown solution status
 
     """
     start = time.time()
     # construct graph for both smiles.
     G1 = construct_graph(smiles1)
     G2 = construct_graph(smiles2)
+    distance = None
+    compute_mode = None
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
         try:
@@ -72,12 +76,13 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
             print('ERROR:', smiles1, smiles2, 'filter', e, file=sys.stderr)
             if (catch_errors):
                 distance = -1
-                compute_mode = 2
+                compute_mode = ComputationMode.ABOVE_THRESHOLD.value
             else:
                 raise e
     # store the filter results
     distance_filter = distance
     compute_mode_filter = compute_mode
+
     # calculate MCES
     try:
         distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
@@ -86,13 +91,19 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='default', solver_options={
         print('ERROR:', smiles1, smiles2, 'exact', e, file=sys.stderr)
         if (catch_errors):
             distance = -1
-            compute_mode = 1
+            compute_mode = ComputationMode.EXACT.value
         else:
             raise e
     # if ILP computation does not have a results because the time limit was reached, use the filter
-    if (distance == -1 and compute_mode == 5):
-        distance = distance_filter
-        compute_mode = 6
+    # supported for CPLEX and CBC
+    if (threshold != -1):
+        if (distance == -1 and compute_mode == ComputationMode.TIMEOUT_BOUND.value)\
+            or (distance == -1 and compute_mode == ComputationMode.CBC_TIMEOUT_UNKNOWN.value and distance_filter > 0):
+            distance = distance_filter
+            compute_mode = compute_mode_filter
+    elif (distance == -1 and compute_mode != ComputationMode.CBC_TIMEOUT_UNKNOWN.value):
+        # want exact result, so don't use filter
+        compute_mode = ComputationMode.TIMEOUT_BOUND.value
     return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):
@@ -154,12 +165,35 @@ def filter_inputs(inputs,dmatrix_file,threshold=None):
     return filtered_inputs, precomputed_mces
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'input', help='input file in the format: id,smiles1,smiles2 OR hdf5 file when using hdf5 mode')
-    parser.add_argument('output', help='output file')
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('input', help='input file in the format: index,smiles1,smiles2 OR hdf5 file when using hdf5 mode')
+    parser.add_argument('output', help='output file in the format: index,myopic MCES distance,computation time in seconds,computation mode')
+
+    # general options
     parser.add_argument('--threshold', type=float, default=10.,
                         action='store', help='threshold for the distance')
+    parser.add_argument('--solver', type=str, default='COIN_CMD',
+                        action='store', help='Solver for the ILP. example: CPLEX_PY')
+    parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
+                        'By default this is set to the number of (logical) CPU cores.', default=-1)
+    parser.add_argument('--hdf5_mode', action='store_true',
+                        help='more time and space efficient mode of input/output using the `input` hdf5-file. '
+                        'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
+                        'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
+    parser.add_argument('--hide_rdkit_warnings', action='store_true', help='attempts to suppress RDKit warning')
+    
+    # ilp solver options
+    parser.add_argument('--solver_onethreaded', action='store_true',
+                        help='limit ILP solver to one thread, resulting in faster '
+                        'performance with parallel computations (not available for all solvers)')
+    parser.add_argument('--solver_no_msg', action='store_true',
+                        help='prevent solver from logging (not available for all solvers)')
+    parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
+                        help='EXPERIMENTAL: set a time limit for the ILP solver, solutions will not be exact anymore!'
+                         ' Supported solver is CPLEX_PY, for others, correctness cannot be guaranteed.')
+
+
+    # experimental options
     parser.add_argument('--no_ilp_threshold', action='store_true',
                         help='(experimental) if set, do not add threshold as constraint to ILP, '
                         'resulting in longer runtimes and potential violations of the triangle equation')
@@ -170,22 +204,6 @@ def main():
     parser.add_argument('--use_bound_zero', action='store_true',
                         help='if this is set, compute and use an additional weak molecular formula-based '
                         'lower bound. Use in conjunction with `choose_bound_dynamically`.')
-    parser.add_argument('--solver', type=str, default='default',
-                        action='store', help='Solver for the ILP. example:CPLEX_CMD')
-    parser.add_argument('--solver_onethreaded', action='store_true',
-                        help='limit ILP solver to one thread, resulting in faster '
-                        'performance with parallel computations (not available for all solvers)')
-    parser.add_argument('--solver_no_msg', action='store_true',
-                        help='prevent solver from logging (not available for all solvers)')
-    parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
-                        help='EXPERIMENTAL: set a time limit for the ILP solver, solutions will not be exact anymore!')
-    parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
-                        'By default this is set to the number of (logical) CPU cores.', default=-1)
-    parser.add_argument('--hdf5_mode', action='store_true',
-                        help='more time and space efficient mode of input/output using the `input` hdf5-file. '
-                        'Has to contain one nx3 array with indices (`computation_indices`): (id_, smiles1_i, smiles2_i) '
-                        'and another array with the corresponding SMILES (`smiles`). Output will be written to the same file.')
-    parser.add_argument('--hide_rdkit_warnings', action='store_true', help='attempts to suppress RDKit warning')
     parser.add_argument('--catch_computation_errors', action='store_true', help='(experimental) instead of aborting '
                         'the computations, instances that failed to compute receive distance "-1"')
     parser.add_argument('--jobs_batch_size', type=int, default=32, help='(experimental) batch size for parallelization')
@@ -209,6 +227,12 @@ def main():
                                    always_stronger_bound=not args.choose_bound_dynamically,
                                    use_bound_zero=args.use_bound_zero,
                                    catch_errors=args.catch_computation_errors)
+    
+    if (args.solver != 'CPLEX_PY' and args.solver_time_limit_seconds is not None):
+        print('Unsupported solver for timelimit flag, correctness not guaranteed!')
+        if (args.solver == 'COIN_CMD'):
+            additional_mces_options['solver_options']['timeMode'] = 'cpu'
+
     if (args.solver_onethreaded):
         additional_mces_options['solver_options']['threads'] = 1
     if (args.solver_no_msg):
