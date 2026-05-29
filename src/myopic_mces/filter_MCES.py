@@ -16,9 +16,11 @@ class ComputationMode(Enum):
     DYNAMIC_BOUND0 = 20         # bound chosen dynamically -> bound 0 used
     DYNAMIC_BOUND1 = 21         # bound chosen dynamically -> bound 1 used
     DYNAMIC_BOUND2 = 22         # bound chosen dynamically -> bound 2 used
+    UNKNOWN = 3                 # unknown computation mode 
     STRONGEST_BOUND = 4         # strongest bound was used (`bound 2` currently)
     TIMEOUT_EXACT_SOLUTION = 5  # timeout reached during exact computation, unproven solution
     TIMEOUT_BOUND = 6           # timeout, bound returned as no solution was found
+    CBC_TIMEOUT_UNKNOWN = 7     # cbc solver and timelimit used, solution unreliable
 
 # def filter0_nographs(s1, s2):
 #     counts = np.zeros((2, 118)) # to be extra sure ;)
