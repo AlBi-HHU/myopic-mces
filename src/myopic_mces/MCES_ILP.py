@@ -178,8 +178,7 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
 
     #solve the ILP and return the correct computation mode
     if solver=="COIN_CMD":
-        cbc_path = ".venv/lib/python3.12/site-packages/pulp/solverdir/cbc/linux/i64/cbc"
-        sol=pulp.getSolver(solver="COIN_CMD", path=cbc_path, **solver_options)
+        sol=pulp.getSolver(solver="COIN_CMD", **solver_options)
         ILP.solve(sol)
         ilp_code = ILP.status
         ilp_sol_code = ILP.sol_status
