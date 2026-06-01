@@ -61,8 +61,7 @@ def test_ILP_COIN_CMD():
                                                                 (longs1, longs2, 10., 800, pulp.constants.LpStatusOptimal, pulp.constants.LpSolutionOptimal),
                                                             ]:
 
-            cbc_path = ".venv/lib/python3.12/site-packages/pulp/solverdir/cbc/linux/i64/cbc"
-            sol = pulp.COIN_CMD(path=cbc_path, threads=1, timeLimit=time_limit, timeMode='cpu', msg=True)
+            sol = pulp.COIN_CMD(threads=1, timeLimit=time_limit, timeMode='cpu', msg=True)
             ILP = construct_ILP(construct_graph(s1), construct_graph(s2), thr)
             ILP.solve(sol)
             st = ILP.status

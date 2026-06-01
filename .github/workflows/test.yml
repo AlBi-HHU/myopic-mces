@@ -23,4 +23,4 @@ jobs:
 
       - run: uv sync --group dev
 
-      - run: uv run pytest -k 'not test_ilp'
+      - run: uv run pytest -k 'not test_ILP_CPLEX'
