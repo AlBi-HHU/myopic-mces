@@ -189,7 +189,7 @@ def main():
     parser.add_argument('--solver_no_msg', action='store_true',
                         help='prevent solver from logging (not available for all solvers)')
     parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
-                        help='EXPERIMENTAL: set a time limit for the ILP solver, solutions will not be exact anymore!'
+                        help='EXPERIMENTAL: set a time limit for the ILP solver. Computations below the threshold are not guaranteed to be exact anymore!'
                          ' Supported solver is CPLEX_PY, for others, correctness cannot be guaranteed.')
 
 
@@ -229,7 +229,7 @@ def main():
                                    catch_errors=args.catch_computation_errors)
     
     if (args.solver != 'CPLEX_PY' and args.solver_time_limit_seconds is not None):
-        print('Unsupported solver for timelimit flag, correctness not guaranteed!')
+        print('Unsupported solver for timelimit flag, correctness not guaranteed!', file=sys.stderr)
         if (args.solver == 'COIN_CMD'):
             additional_mces_options['solver_options']['timeMode'] = 'cpu'
 

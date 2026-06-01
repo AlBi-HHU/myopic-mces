@@ -68,7 +68,7 @@ Options for the ILP solver
 
 --solver_no_msg                 If set, prevents solver from logging (not available for all solvers)
 
---solver_time_limit_seconds     Set a time limit for the ILP solver. Computations will not be exact anymore!
+--solver_time_limit_seconds     Set a time limit for the ILP solver. Computations below the threshold are not guaranteed to be exact anymore!
                                 Supported solver is CPLEX_PY, for others, correctness of returned computation
                                 modes cannot be guaranteed. (Experimental)
 
