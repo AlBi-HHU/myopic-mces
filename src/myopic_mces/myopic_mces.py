@@ -63,8 +63,8 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
     # construct graph for both smiles.
     G1 = construct_graph(smiles1)
     G2 = construct_graph(smiles2)
-    distance = None
-    compute_mode = None
+    distance = np.inf
+    compute_mode = ComputationMode.UNKNOWN
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
         try:
@@ -94,16 +94,12 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
             compute_mode = ComputationMode.EXACT.value
         else:
             raise e
-    # if ILP computation does not have a results because the time limit was reached, use the filter
+    # if ILP computation does not have a result because the time limit was reached, use the filter
     # supported for CPLEX and CBC
     if (threshold != -1):
-        if (distance == -1 and compute_mode == ComputationMode.TIMEOUT_BOUND.value)\
-            or (distance == -1 and compute_mode == ComputationMode.CBC_TIMEOUT_UNKNOWN.value and distance_filter > 0):
+        if (distance == -1 and compute_mode == ComputationMode.TIMEOUT_BOUND.value and distance_filter > 0):
             distance = distance_filter
             compute_mode = compute_mode_filter
-    elif (distance == -1 and compute_mode != ComputationMode.CBC_TIMEOUT_UNKNOWN.value):
-        # want exact result, so don't use filter
-        compute_mode = ComputationMode.TIMEOUT_BOUND.value
     return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):

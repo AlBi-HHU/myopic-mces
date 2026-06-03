@@ -10,6 +10,7 @@ from typing import DefaultDict
 import numpy as np
 from enum import Enum
 
+# TODO: if additional options such as node_limit are added in the future, add dedicated computation mode
 class ComputationMode(Enum):
     EXACT = 1                   # exact computation via ILP
     ABOVE_THRESHOLD = 2         # exact computation tried, but would be above threshold -> threshold returned
@@ -18,9 +19,8 @@ class ComputationMode(Enum):
     DYNAMIC_BOUND2 = 22         # bound chosen dynamically -> bound 2 used
     UNKNOWN = 3                 # unknown computation mode 
     STRONGEST_BOUND = 4         # strongest bound was used (`bound 2` currently)
-    TIMEOUT_EXACT_SOLUTION = 5  # timeout reached during exact computation, unproven solution
+    TIMEOUT_ILP_UNPROVEN = 5    # timeout reached during exact computation, unproven solution
     TIMEOUT_BOUND = 6           # timeout, bound returned as no solution was found
-    CBC_TIMEOUT_UNKNOWN = 7     # cbc solver and timelimit used, solution unreliable
 
 # def filter0_nographs(s1, s2):
 #     counts = np.zeros((2, 118)) # to be extra sure ;)
