@@ -1,0 +1,31 @@
+name: Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      pytestargs:
+        description: 'Arguments to pytest, specyfing which tests to run. Example: -m "not timelimit" -k "not CPLEX_PY"'
+        required: True
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - run: uv sync --group dev
+
+      - name: Pytest with provided arguments, handled safely
+        env:
+          PYTEST_ARGS: ${{ inputs.pytestargs }}
+        run: echo "$PYTEST_ARGS" | xargs uv run pytest
