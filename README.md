@@ -9,11 +9,11 @@ Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES
 
 ## Usage
 
-Input and Output file are in csv format. Every line in the input-file is one comparison:
+Input and Output file are in csv format per default. Every line in the input-file is one comparison:
 
 input-file: `index,SMILES1,SMILES2`
 
-output-file: `index,myopic MCES distance,time taken,computation mode`
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode`
 
 Download via pip and execute:
 ```bash
@@ -32,54 +32,75 @@ from myopic_mces import MCES
 MCES('CC(=O)OC1=CC=CC=C1C(=O)O', 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C')
 ```
 
-See [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html) on how to configure ILP solvers. By default, the PuLP-provided COIN-OR solver will be used.
+See [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html) on how to configure ILP solvers.\
+As PuLP does not ship with solvers anymore, a solver must be configured before running myopic-mces. \
+The default solver for myopic-mces is 'COIN_CMD', which can be installed via:
+```
+pip install pulp[cbc]
+```
 
 ## Optional Arguments
 
 General options
 ```
---threshold  int         Threshold for the comparison.
-                         Exact distance is only calculated if the distance is lower than the threshold.
-                         If set to -1 the exact distance is always calculated.
+--threshold  int        Threshold for the comparison.
+                        Exact distance is only calculated if the distance is lower than the threshold.
+                        If set to -1 the exact distance is always calculated.
+                        Default: 10
 
---solver string          Solver used for solving the ILP. Examples:'CPLEX_CMD', 'GUROBI_CMD', 'GLPK_CMD'.
+--solver string         Solver used for solving the ILP. Examples:'CPLEX_CMD', 'GUROBI_CMD', 'GLPK_CMD'.
+                        Default: COIN_CMD
 
---num_jobs int           Number of jobs; instances to run in parallel.
-                         By default this is set to the number of (logical) CPU cores.
+--num_jobs int          Number of jobs; instances to run in parallel.
+                        By default this is set to the number of (logical) CPU cores.
+                        Default: -1
 
---hdf5_mode              Input will be read from `input-file` in HDF5 format; output will be appended to this file.
-                         See "Prepare HDF5 input" below
+--hdf5_mode             If set, input will be read from `input-file` in HDF5 format; output will be appended to this file.
+                        See "Prepare HDF5 input" below
+
+--hide_rdkit_warnings   If set, attempts to supress RDKit warnings.
 ```
 
 Options for the ILP solver
 ```
---solver_onethreaded    Limit ILP solver to one thread, likely resulting in faster
-                        performance with parallel computations (not available for all solvers).
+--solver_onethreaded            If set, limits ILP solver to one thread, likely resulting in faster
+                                performance with parallel computations (not available for all solvers).
 
---solver_no_msg         Prevent solver from logging (not available for all solvers).
+--solver_no_msg                 If set, prevents solver from logging (not available for all solvers)
+
+--solver_time_limit_seconds     Set a time limit for the ILP solver. Computations below the threshold are not guaranteed to be exact anymore!
+                                Supported solver is CPLEX_PY, for others, correctness of returned computation
+                                modes cannot be guaranteed. (Experimental)
 
 ```
 
 Experimental options for myopic MCES distance computation
 ```
---no_ilp_threshold           If set, do not add threshold as constraint to ILP,
-                             resulting in longer runtimes and potential violations of the triangle equation.
+--no_ilp_threshold          If set, do not add threshold as constraint to ILP,
+                            resulting in longer runtimes and potential violations of the triangle equation.
 
---choose_bound_dynamically   If set, a potentially weaker but faster lower bound will be computed and used
-                             when this bound is already greater than the threshold. By default (without
-                             this option), always the strongest lower bound will be computed and used.
-                             
---use_bound_zero             If set alongside `--choose_bound_dynamically`, an additional very weak but fast 
-                             molecular formula-based bound will be used.
+--choose_bound_dynamically  If set, a potentially weaker but faster lower bound will be computed and used
+                            when this bound is already greater than the threshold. By default (without
+                            this option), always the strongest lower bound will be computed and used.
 
---use_matrix_lookup          Use with the path to a HDF5 file with precomputed MCES distances. Computation for 
-                             these instances will be skipped, using the provided values. HDF5 has to contain 
-                             distances (key `mces`) and SMILES (`mces_smiles_order`), like the HDF5 files 
-                             produced by this script. NOTE: When used in combination with `prepare_input`, 
-                             only use with `--no_shuffle`,
+--use_bound_zero            If set, compute and use an additional weaker formula-based lower bound.
+                            Use in conjunction with `choose_bound_dynamically`.
 
---lookup_threshold           Use with `--use_matrix_lookup`:  Precomputed values equal or greater than the 
-                             threshold will be ignored; these instances will be recomputed.
+--catch_computation_errors  Instead of aborting the computation, instances that failed to compute receive distance "-1".
+
+--jobs_batch_size           Batch size for parallelization.
+                            Default: 32
+
+--jobs_dispatch             Pre-dispatch of jobs for parallelization.
+                            Default: 10*n_jobs
+
+--use_matrix_lookup         Use with the path to a HDF5 file with precomputed MCES distances. Computation for these 
+                            instances will be skipped, using the provided values. HDF5 has to contain distances (key `mces`) 
+                            and SMILES (`mces_smiles_order`), like the HDF5 files produced by this script. 
+                            NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`.
+
+--lookup_threshold          Use with `--use_matrix_lookup`: Precomputed values equal or greater than the threshold 
+                            will be ignored; these instances will be recomputed
 
 ```
 
@@ -98,7 +119,7 @@ Python packages required are:
 ```
 rdkit(==2022.09.5)
 networkx(==3.0)
-pulp(==2.7.0)
+pulp[cbc](==2.7.0)
 scipy(==1.10.1)
 joblib(==1.2.0)
 ```
@@ -116,6 +137,14 @@ Download this repository, navigate to the download location and execute the foll
 conda env create -f conda_env.yml
 # to activate the created enironment:
 conda activate myopic_mces
+```
+
+Another option is using [uv](https://docs.astral.sh/uv/):
+Download this repository, navigate to the download location and execute the following commands:
+```bash
+uv sync
+# to activate the created environment:
+source .venv/bin/activate
 ```
 
 A typical installation time should not exceed 5 minutes, mostly depending on the internet connection speed to download all required packages.

@@ -7,6 +7,7 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 from myopic_mces.filter_MCES import ComputationMode
+import math
 
 def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     """
@@ -144,7 +145,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     return ILP
 
 
-def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_threshold=False):
+def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False):
     """
      Calculates the exact distance between two molecules using an ILP
 
@@ -157,7 +158,7 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
      threshold : float
          Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
      solver: string
-         ILP-solver used for solving MCES. Example:CPLEX_CMD
+         ILP-solver used for solving MCES. Example: CPLEX_PY
      solver_options: dict
          additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
      no_ilp_threshold: bool
@@ -176,38 +177,70 @@ def MCES_ILP(G1, G2, threshold, solver='default', solver_options={}, no_ilp_thre
 
     ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold)
 
-    #solve the ILP
-    if solver=="default":
-        sol=pulp.getSolver(solver="PULP_CBC_CMD", **solver_options)
+    #solve the ILP and return the correct computation mode
+    if solver=="COIN_CMD":
+        sol=pulp.getSolver(solver="COIN_CMD", **solver_options)
         ILP.solve(sol)
+
+        ilp_code = ILP.status
+        ilp_sol_code = ILP.sol_status
+
+        if ilp_code == pulp.constants.LpStatusOptimal:
+
+            if ilp_sol_code == pulp.constants.LpSolutionOptimal:
+
+                return float(ILP.objective.value()), ComputationMode.EXACT.value
+            
+            if (solver_options.get('timeLimit') is not None and ilp_sol_code == pulp.constants.LpSolutionIntegerFeasible): 
+                # timelimit hit, so mode 5
+                return float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value 
+                # if this is zero, we use filter
+        
+        elif (ilp_code == pulp.constants.LpStatusInfeasible or ilp_sol_code == pulp.constants.LpSolutionInfeasible):
+            
+            # TODO check if objective value 0
+            if (solver_options.get('timeLimit') is not None\
+                and math.isclose(ILP.solutionCpuTime, solver_options.get('timeLimit'), abs_tol=1) \
+                and float(ILP.objective.value()) == 0): 
+                return -1, ComputationMode.TIMEOUT_BOUND.value
+            
+            return threshold, ComputationMode.ABOVE_THRESHOLD.value
+        
+        elif (ilp_code == pulp.constants.LpStatusNotSolved):
+            # must be timelimit
+            return -1, ComputationMode.TIMEOUT_BOUND.value
+        else:
+            raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
     else:
         sol=pulp.getSolver(solver, **solver_options)
         ILP.solve(sol)
 
-    ilp_code = ILP.status
-    try:
-        ilp_code_detailed = ILP.solverModel.solution.get_status()
-        ilp_code_time_limit_feasible = ILP.solverModel.solution.status.MIP_time_limit_feasible
-        ilp_code_time_limit_infeasible = ILP.solverModel.solution.status.MIP_time_limit_infeasible
-    except AttributeError:
-        # only works for some solvers, namely CPLEX_PY
-        ilp_code_detailed = ilp_code_time_limit_feasible = ilp_code_time_limit_infeasible = None
+        ilp_code = ILP.status
+        ilp_sol_code = ILP.sol_status
 
-    if ilp_code == pulp.constants.LpStatusOptimal:
-        if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_feasible:
-            # hit time limit, but still found a solution
-            return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
-        return float(ILP.objective.value()), ComputationMode.EXACT.value
-    elif ilp_code == pulp.constants.LpStatusInfeasible:
-        if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_infeasible:
-            # hit time limit, no solution
-            return -1, ComputationMode.TIMEOUT_EXACT_SOLUTION.value       # TODO: now we should use a filter
-        return threshold, ComputationMode.ABOVE_THRESHOLD.value
-    # elif ilp_code == pulp.constants.LpStatusNotSolved:
-    #     # must be time limit
-    #     return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
-    else:
-        raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
+        try:
+            ilp_code_detailed = ILP.solverModel.solution.get_status()
+            ilp_code_time_limit_feasible = ILP.solverModel.solution.status.MIP_time_limit_feasible
+            ilp_code_time_limit_infeasible = ILP.solverModel.solution.status.MIP_time_limit_infeasible
+        except AttributeError:
+            # only works for some solvers, namely CPLEX_PY
+            ilp_code_detailed = ilp_code_time_limit_feasible = ilp_code_time_limit_infeasible = None
+
+        if ilp_code == pulp.constants.LpStatusOptimal:
+            if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_feasible:
+                # hit time limit, but still found a solution
+                return float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value
+            return float(ILP.objective.value()), ComputationMode.EXACT.value
+        elif ilp_code == pulp.constants.LpStatusInfeasible:
+            if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_infeasible:
+                # hit time limit, no solution
+                return -1, ComputationMode.TIMEOUT_BOUND.value       # TODO: now we should use a filter
+            return threshold, ComputationMode.ABOVE_THRESHOLD.value
+        # elif ilp_code == pulp.constants.LpStatusNotSolved:
+        #     # must be time limit
+        #     return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
+        else:
+            raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
 
 def add_MCES_to_molgraphs(G1, G2, solver='CPLEX_CMD'):
     import re
