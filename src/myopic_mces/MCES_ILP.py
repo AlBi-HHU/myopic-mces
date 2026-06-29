@@ -8,6 +8,7 @@ import pulp
 import networkx as nx
 from myopic_mces.filter_MCES import ComputationMode
 import math
+import re
 
 def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     """
@@ -145,7 +146,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     return ILP
 
 
-def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False):
+def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False, structure=False):
     """
      Calculates the exact distance between two molecules using an ILP
 
@@ -163,6 +164,8 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
          additional options to pass to solvers. Example: threads=1, msg=False for better multi-threaded performance
      no_ilp_threshold: bool
          if true, always return exact distance even if it is below the threshold (slower)
+     structure: bool
+         if true, calculate pairwise MCES structures
 
      Returns:
      -------
@@ -172,12 +175,26 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
          Type of Distance:
              1 : Exact Distance
              2 : Lower bound (If the exact distance is above the threshold)
+     (dict 
+         Mapping of MCES structure, in the format (atom1_mol1, atom2_mol1): (atom1_mol2, atom2_mol2) to describe that the bond
+         between atom1 and atom2 in molecule1 was matched to the bond of atom1 and atom2 in molecule2.
+         Only returned if structure is set to True.)
 
     """
 
     ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold)
 
-    #solve the ILP and return the correct computation mode
+    # if structure is set, only calculate it if the returned mode is exact
+    def result(dist, mode):
+        if structure:
+            if mode == ComputationMode.EXACT.value:
+                mapping = add_MCES_to_molgraphs(ILP, G1, G2)
+                return dist, mode, mapping
+            else:
+                return dist, mode, None
+        return dist, mode
+
+    # solve the ILP and return the correct computation mode
     if solver=="COIN_CMD":
         sol=pulp.getSolver(solver="COIN_CMD", **solver_options)
         ILP.solve(sol)
@@ -189,26 +206,25 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
 
             if ilp_sol_code == pulp.constants.LpSolutionOptimal:
 
-                return float(ILP.objective.value()), ComputationMode.EXACT.value
+                return result(float(ILP.objective.value()), ComputationMode.EXACT.value)
             
             if (solver_options.get('timeLimit') is not None and ilp_sol_code == pulp.constants.LpSolutionIntegerFeasible): 
                 # timelimit hit, so mode 5
-                return float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value 
+                return result(float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value)
                 # if this is zero, we use filter
         
         elif (ilp_code == pulp.constants.LpStatusInfeasible or ilp_sol_code == pulp.constants.LpSolutionInfeasible):
             
-            # TODO check if objective value 0
             if (solver_options.get('timeLimit') is not None\
                 and math.isclose(ILP.solutionCpuTime, solver_options.get('timeLimit'), abs_tol=1) \
                 and float(ILP.objective.value()) == 0): 
-                return -1, ComputationMode.TIMEOUT_BOUND.value
+                return result(-1, ComputationMode.TIMEOUT_BOUND.value)
             
-            return threshold, ComputationMode.ABOVE_THRESHOLD.value
+            return result(threshold, ComputationMode.ABOVE_THRESHOLD.value)
         
         elif (ilp_code == pulp.constants.LpStatusNotSolved):
             # must be timelimit
-            return -1, ComputationMode.TIMEOUT_BOUND.value
+            return result(-1, ComputationMode.TIMEOUT_BOUND.value)
         else:
             raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
     else:
@@ -229,34 +245,38 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
         if ilp_code == pulp.constants.LpStatusOptimal:
             if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_feasible:
                 # hit time limit, but still found a solution
-                return float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value
-            return float(ILP.objective.value()), ComputationMode.EXACT.value
+                return result(float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value)
+            return result(float(ILP.objective.value()), ComputationMode.EXACT.value)
         elif ilp_code == pulp.constants.LpStatusInfeasible:
             if ilp_code_detailed is not None and ilp_code_detailed == ilp_code_time_limit_infeasible:
                 # hit time limit, no solution
-                return -1, ComputationMode.TIMEOUT_BOUND.value       # TODO: now we should use a filter
-            return threshold, ComputationMode.ABOVE_THRESHOLD.value
+                return result(-1, ComputationMode.TIMEOUT_BOUND.value)       # TODO: now we should use a filter
+            return result(threshold, ComputationMode.ABOVE_THRESHOLD.value)
         # elif ilp_code == pulp.constants.LpStatusNotSolved:
         #     # must be time limit
         #     return float(ILP.objective.value()), ComputationMode.TIMEOUT_EXACT_SOLUTION.value
         else:
             raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
 
-def add_MCES_to_molgraphs(G1, G2, solver='CPLEX_CMD'):
-    import re
-    ILP = construct_ILP(G1, G2, threshold=-1)
-    sol=pulp.getSolver(solver, msg=False)
-    ILP.solve(sol)
-    for v in ILP.variables():
-        if (v.name.startswith('nodepairs_')):
+def add_MCES_to_molgraphs(ILP, G1, G2):
+    """
+    
+    """
+    mapping_G1_to_G2 = {}
+    for i, v in enumerate(ILP.variables()):
+        if (v.name.startswith('nodepairs_') and v.value() == 1):
             i, j = map(int, re.findall(r'\d+', v.name.split('_', 1)[1]))
             G1.nodes[i]['in_mces'] = True
             G2.nodes[j]['in_mces'] = True
-        elif (v.name.startswith('edgepairs_') and len(indices:=list(map(int, re.findall(r'\d+', v.name))))==4):
+        elif (v.name.startswith('edgepairs_') and len(indices:=list(map(int, re.findall(r'\d+', v.name))))==4 and v.value() == 1):
             i1, j1, i2, j2 = indices
             G1.edges[(i1, j1)]['in_mces'] = True
             G2.edges[(i2, j2)]['in_mces'] = True
-        # elif (v.name.startswith('edgepairs_(_1,')):
-        #     # edge of the second graph is *not* part of MCES
-        #     _, i, j = map(int, re.findall(r'\d+', v.name))
-        #     G2.edges[(i, j)]['in_mces'] = True
+            # # in G1, save all of the corresponding edges in G2
+            # G1.edges[(i1, j1)]['corresponding_edge'] = [(i2, j2)]
+
+            # frozenset would be more correct, because edges are undirected, but its too long
+            #mapping_G1_to_G2[frozenset((i1, j1))] = frozenset((i2, j2))
+            mapping_G1_to_G2[(i1, j1)] = (i2, j2)
+    return mapping_G1_to_G2
+

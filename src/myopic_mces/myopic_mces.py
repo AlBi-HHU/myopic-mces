@@ -14,7 +14,7 @@ from myopic_mces.filter_MCES import apply_filter, ComputationMode
 
 def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
-         catch_errors=False):
+         catch_errors=False, structure=False, num_smiles=False):
     """
     Calculates the distance between two molecules
 
@@ -56,13 +56,15 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
             2 : Lower bound (if the exact distance is above the threshold; bound chosen dynamically)
             4 : Lower bound (second lower bound was used)
             6 : Timelimit reached, no solution found
-            7 : (CBC solver only) timelimit reached, unknown solution status
 
     """
     start = time.time()
-    # construct graph for both smiles.
-    G1 = construct_graph(smiles1)
-    G2 = construct_graph(smiles2)
+    # construct graph for both smiles. if we want to calculate the MCES structure mapping, we need save_mol
+    G1 = construct_graph(smiles1, save_mol=structure, num_smiles=num_smiles)
+    G2 = construct_graph(smiles2, save_mol=structure, num_smiles=num_smiles)
+    if num_smiles:
+        num_smiles1 = G1.num_smiles
+        num_smiles2 = G2.num_smiles
     distance = np.inf
     compute_mode = ComputationMode.UNKNOWN
     if threshold != -1:         # with `-1` always compute exact distance
@@ -71,6 +73,11 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
             distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound,
                                                   use_bound_zero=use_bound_zero)
             if distance > threshold:
+                if structure:
+                    if num_smiles:
+                        return i, distance, time.time() - start, compute_mode, None, num_smiles1, num_smiles2
+                    else:
+                        return i, distance, time.time() - start, compute_mode, None
                 return i, distance, time.time() - start, compute_mode
         except Exception as e:
             print('ERROR:', smiles1, smiles2, 'filter', e, file=sys.stderr)
@@ -85,8 +92,13 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
 
     # calculate MCES
     try:
-        distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
-                                          no_ilp_threshold=no_ilp_threshold)
+        if not structure:
+            distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
+                                            no_ilp_threshold=no_ilp_threshold, structure=structure)
+        elif structure:
+            distance, compute_mode, mapping = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
+                                            no_ilp_threshold=no_ilp_threshold, structure=structure)
+            
     except Exception as e:
         print('ERROR:', smiles1, smiles2, 'exact', e, file=sys.stderr)
         if (catch_errors):
@@ -100,7 +112,15 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
         if (distance == -1 and compute_mode == ComputationMode.TIMEOUT_BOUND.value and distance_filter > 0):
             distance = distance_filter
             compute_mode = compute_mode_filter
-    return i, distance, time.time() - start, compute_mode
+    if num_smiles:
+        if structure:
+            return i, distance, time.time() - start, compute_mode, mapping, num_smiles1, num_smiles2
+        else:
+            return i, distance, time.time() - start, compute_mode, num_smiles1, num_smiles2
+    elif structure:
+        return i, distance, time.time() - start, compute_mode, mapping
+    else: 
+        return i, distance, time.time() - start, compute_mode
 
 def hdf5_input(file_path):
     import h5py
@@ -167,7 +187,8 @@ def main():
 
     # general options
     parser.add_argument('--threshold', type=float, default=10.,
-                        action='store', help='threshold for the distance')
+                        action='store', help='threshold for the distance. exact distance is only calculated if the distance '\
+                        'is lower than the threshold. if set to -1, exact distance is always calculated. ')
     parser.add_argument('--solver', type=str, default='COIN_CMD',
                         action='store', help='Solver for the ILP. example: CPLEX_PY')
     parser.add_argument('--num_jobs', type=int, help='Number of jobs; instances to run in parallel. '
@@ -212,6 +233,10 @@ def main():
     parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`: '
                         'Precomputed values equal or greater than the threshold will be ignored; these '
                         'instances will be recomputed', default=None, type=float)
+    parser.add_argument('--num_smiles', action='store_true', help='(experimental) if set, calculates and saves SMILES with numbered atoms ' \
+                        'to the output for each input SMILES')
+    parser.add_argument('--structure', action='store_true', help='(experimental) if set, saves a mapping of the pairwise MCES structure ' \
+                        'to the output. Only works for molecules for which the MCES distance has been proven exact by the ILP.')
     args = parser.parse_args()
 
     if (args.hide_rdkit_warnings):
@@ -222,8 +247,11 @@ def main():
     additional_mces_options = dict(no_ilp_threshold=args.no_ilp_threshold, solver_options=dict(),
                                    always_stronger_bound=not args.choose_bound_dynamically,
                                    use_bound_zero=args.use_bound_zero,
-                                   catch_errors=args.catch_computation_errors)
+                                   catch_errors=args.catch_computation_errors,
+                                   num_smiles=args.num_smiles,
+                                   structure=args.structure)
     
+    # TODO: disclaimer that mapping does not work with hdf5 format yet
     if (args.solver != 'CPLEX_PY' and args.solver_time_limit_seconds is not None):
         print('Unsupported solver for timelimit flag, correctness not guaranteed!', file=sys.stderr)
         if (args.solver == 'COIN_CMD'):
@@ -257,8 +285,23 @@ def main():
         hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())
     else:
         with open(args.output, 'w') as out_handle:
-            for ind, distance, duration, compute_mode in results:
-                out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
+            if args.num_smiles:
+                if args.structure:
+                    for ind, distance, duration, compute_mode, mapping, num_smiles1, num_smiles2 in results:
+                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},'
+                                        f'{f'"{repr(mapping).replace(", ", ",").replace(": ", ":")}"' if mapping is not None else ""},'
+                                        f'{num_smiles1},{num_smiles2}\n')
+                else:
+                    for ind, distance, duration, compute_mode, num_smiles1, num_smiles2 in results:
+                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},{num_smiles1},{num_smiles2}\n')
+            elif args.structure:
+                for ind, distance, duration, compute_mode, mapping in results:
+                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},'
+                                         f'{f'"{repr(mapping).replace(", ", ",").replace(": ", ":")}"' if mapping is not None else ""}\n')
+            else:
+                for ind, distance, duration, compute_mode in results:
+                        out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
+
 
 if __name__ == '__main__':
     main()
