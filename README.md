@@ -164,7 +164,7 @@ Typical runtime is about 10s on Windows 10 with all default options, running on 
 
 ### [`prepare_input.py`](src/myopic_mces/prepare_input.py)
 
-For big datasets it is recommended to divide the input into batches, which can be done with this script:
+For big datasets it is recommended to divide the input into batches, which can be done with this script (HDF5 mode recommended, see below!):
 
 ```bash
 python -m myopic_mces.prepare_input input-file.csv output-folder/ --batch_size 50_000_000
@@ -192,6 +192,8 @@ Instead of preparing the HDF5-file manually, with the additional option to creat
 
 ```bash
 python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode input-smiles.txt output-folder/
+# or for two datasets, dataset_a versus dataset_b:
+python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode --hdf5_extra_input_file dataset-b-smiles.txt dataset-a-smiles.txt output-folder/
 ```
 
 Created batches (`batch$i.hdf5`) are written directly to the `output-folder`.
