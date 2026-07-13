@@ -20,10 +20,17 @@ if __name__ == '__main__':
 
     t0 = time()
 
-    with h5py.File(args.input_batches[0], 'r') as f:
-        smiles = list(f['smiles'])
-        computation_args = {k: f['computation_args'][k][()] for k in f['computation_args']}
-        ninstances = int(binom(len(smiles), 2))
+    smiles = None
+    computation_args = {}
+    for batch in args.input_batches:
+        with h5py.File(batch, 'r') as f:
+            if smiles is None and 'smiles' in f:
+                smiles = list(f['smiles'])
+            if 'computation_args' in f:
+                computation_args = {k: f['computation_args'][k][()] for k in f['computation_args']}
+                if smiles is not None:
+                    break
+    ninstances = int(binom(len(smiles), 2))
 
     if (args.two_datasets_shape is not None):
         if (len(args.two_datasets_shape) != 2):
