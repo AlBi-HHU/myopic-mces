@@ -32,6 +32,9 @@ cplex = [
     "cplex>=22.1.1.2",
     "docplex>=2.32.264",
 ]
+hdf5 = [
+    "h5py>=3.11.0",
+]
 
 [dependency-groups]
 dev = [
