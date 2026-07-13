@@ -196,6 +196,12 @@ python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode input-sm
 
 Created batches (`batch$i.hdf5`) are written directly to the `output-folder`.
 
+With `--use_db_lookup`, pairs already known in a database (`mcesdb`, not public yet) are reused and land in `batch0_precomputed.hdf5`; batches to compute start with `batch1.hdf5`. Database connection parameters come from the `PGHOST`/`PGDATABASE`/... environment variables.
+
+```bash
+python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode --use_db_lookup --threshold 10 input-smiles.txt output-folder/
+```
+
 ### [`combine_hdf5_batches.py`](src/myopic_mces/combine_hdf5_batches.py)
 
 Batches results can be combined into a single HDF5 file with this script:
