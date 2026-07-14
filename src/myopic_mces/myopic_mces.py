@@ -163,7 +163,9 @@ def filter_inputs(inputs,dmatrix_file,threshold=None):
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('input', help='input file in the format: index,smiles1,smiles2 OR hdf5 file when using hdf5 mode')
-    parser.add_argument('output', help='output file in the format: index,myopic MCES distance,computation time in seconds,computation mode')
+    parser.add_argument('output', nargs='?', default=None,
+                        help='output file in the format: index,myopic MCES distance,computation time in seconds,computation mode '
+                             '(not needed with --hdf5_mode)')
 
     # general options
     parser.add_argument('--threshold', type=float, default=10.,
@@ -213,6 +215,9 @@ def main():
                         'Precomputed values equal or greater than the threshold will be ignored; these '
                         'instances will be recomputed', default=None, type=float)
     args = parser.parse_args()
+
+    if args.output is None and not args.hdf5_mode:
+        parser.error('the following argument is required: output (omit only when using --hdf5_mode)')
 
     if (args.hide_rdkit_warnings):
         from rdkit import RDLogger
