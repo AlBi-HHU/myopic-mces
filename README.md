@@ -18,7 +18,9 @@ output-file: `index,myopic MCES distance,computation time in seconds,computation
 Download via pip and execute:
 ```bash
 pip install myopic-mces
-myopic_mces input-file output-file
+myopic_mces input-file [output-file]
+
+The `output-file` argument may be omitted when using `--hdf5_mode` (see below).
 ```
 
 Alternatively, to install directly from this repository:
@@ -56,6 +58,7 @@ General options
                         Default: -1
 
 --hdf5_mode             If set, input will be read from `input-file` in HDF5 format; output will be appended to this file.
+                        In this mode the `output-file` positional argument is not needed and may be omitted.
                         See "Prepare HDF5 input" below
 
 --hide_rdkit_warnings   If set, attempts to supress RDKit warnings.
@@ -108,7 +111,7 @@ Experimental options for myopic MCES distance computation
 
 To speed up computations and save space, use the CPLEX solver, HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
 ```bash
-PATH=$CPLEX_HOME/bin/x86-64_linux/:$PATH python -m myopic_mces.myopic_mces --threshold 10 --solver CPLEX_CMD --solver_onethreaded --solver_no_msg --hdf5_mode input-file.hdf5 tmpout
+PATH=$CPLEX_HOME/bin/x86-64_linux/:$PATH python -m myopic_mces.myopic_mces --threshold 10 --solver CPLEX_CMD --solver_onethreaded --solver_no_msg --hdf5_mode input-file.hdf5
 ```
 
 The `PATH`-variable has to be adapted to contain the directory of the CPLEX executable (see [the PuLP documentation](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#cplex)).
