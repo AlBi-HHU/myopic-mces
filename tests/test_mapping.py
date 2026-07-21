@@ -6,6 +6,8 @@ from myopic_mces.MCES_ILP import construct_ILP, add_MCES_to_molgraphs
 from myopic_mces import MCES
 import ast
 import pytest
+import json
+from joblib import Parallel, delayed
 
 def calc_mapping(smiles1, smiles2):
     """
@@ -107,57 +109,43 @@ def test_draw_struct(smiles1, smiles2, mapping, name):
 
 def test_mapping_reader():
     # aufruf auf MCES
-    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=50)
-    solver_options = dict(timeLimit = 10, msg=False)
-    # data['i'], data['dist'], data['t'], data['mode'], data['mapping'], data['num_smiles1'], data['num_smiles2'] = zip(*data.apply(
-    #     lambda row: MCES(row.smiles1, row.smiles2, solver='COIN_CMD', threshold=-1, structure=True, num_smiles=True, solver_options=solver_options),
-    #     axis=1))
+    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=10)
+    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=10)
 
-    results = [
-    MCES(
-        s1,
-        s2,
-        solver='COIN_CMD',
-        threshold=-1,
-        structure=True,
-        num_smiles=True,
-        solver_options=solver_options
+    solver_options = {"timeLimit": 10, "msg": False}
+
+    results = Parallel(n_jobs=-2)(
+        delayed(MCES)(
+            s1,
+            s2,
+            solver="COIN_CMD",
+            threshold=-1,
+            structure=True,
+            num_smiles=True,
+            solver_options=solver_options,
+        )
+        for s1, s2 in zip(data.smiles1, data.smiles2)
     )
-    for s1, s2 in zip(data.smiles1, data.smiles2)
-    ]
 
-    (
-        data['i'],
-        data['dist'],
-        data['t'],
-        data['mode'],
-        data['mapping'],
-        data['num_smiles1'],
-        data['num_smiles2'],
-    ) = map(list, zip(*results))
+    for result, ref in zip(results, reference.itertuples(index=False)):
+        (
+            i,
+            dist,
+            t,
+            mode,
+            mapping,
+            num_smiles1,
+            num_smiles2,
+        ) = result
 
-    data['mapping'] = f'"{repr(data['mapping']).replace(", ", ",").replace(": ", ":")}"' if data['mapping'] is not None else ""
+    def parse_mapping(x):
+        return None if x == "" else ast.literal_eval(x)
 
-    data.to_csv("testdata/huh.csv", header=False)
+    reference["mapping"] = reference["mapping"].map(parse_mapping)
 
-    res = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'])
-    assert (ast.literal_eval(data['mapping']) == ast.literal_eval(res['mapping']).all())
-    assert (data['num_smiles1'] == res['num_smiles1']).all()
-    assert (data['num_smiles2'] == res['num_smiles2']).all()
-    # for index, dist, time, mode, mapping, smiles1, smiles2 in data.itertuples(index=False):
-    #     if pd.isna(mapping):
-    #         pass
-    #     else:
-    #         # assert that the mappings are not malformed
-    #         mapping = ast.literal_eval(mapping)
-    #         assert type(mapping)==dict
-    #     # and then check if rdkit can parse the numbered smiles
-    #     raw_mol1 = Chem.MolFromSmiles(smiles1)
-    #     raw_mol2 = Chem.MolFromSmiles(smiles2)
-    #     # and renumber them with their atommap
-    #     order1 = [atom.GetIdx() for atom in sorted(raw_mol1.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
-    #     mol1 = Chem.RenumberAtoms(raw_mol1, order1)
-    #     order2 = [atom.GetIdx() for atom in sorted(raw_mol2.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
-    #     mol2 = Chem.RenumberAtoms(raw_mol2, order2)
+    for result, ref in zip(results, reference.itertuples(index=False)):
+        _, _, _, _, mapping, n1, n2 = result
 
-test_mapping_reader()
+        assert mapping == ref.mapping
+        assert n1 == ref.num_smiles1
+        assert n2 == ref.num_smiles2

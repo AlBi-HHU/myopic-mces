@@ -41,5 +41,5 @@ dev = [
 
 [pytest]
 testpaths = [
-    "tests"
+    "tests/"
 ]
