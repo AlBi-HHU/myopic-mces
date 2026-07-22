@@ -285,22 +285,33 @@ def main():
         hdf5_output(results, args.input, write_times=True, write_modes=True, args=args._get_kwargs())
     else:
         with open(args.output, 'w') as out_handle:
-            if args.num_smiles:
-                if args.structure:
-                    for ind, distance, duration, compute_mode, mapping, num_smiles1, num_smiles2 in results:
-                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},'
-                                        f'{f'"{repr(mapping).replace(", ", ",").replace(": ", ":")}"' if mapping is not None else ""},'
-                                        f'{num_smiles1},{num_smiles2}\n')
+            if args.structure:
+
+                if mapping is not None:
+                        mapping_str = repr(mapping).replace(', ', ',').replace(': ', ':')
                 else:
-                    for ind, distance, duration, compute_mode, num_smiles1, num_smiles2 in results:
-                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},{num_smiles1},{num_smiles2}\n')
-            elif args.structure:
-                for ind, distance, duration, compute_mode, mapping in results:
-                        out_handle.write(f'{ind},{distance},{duration},{compute_mode},'
-                                         f'{f'"{repr(mapping).replace(", ", ",").replace(": ", ":")}"' if mapping is not None else ""}\n')
+                    mapping_str = ''
+
+                if args.num_smiles:
+                    for ind, distance, duration, compute_mode, mapping, num_smiles1, num_smiles2 in results:
+                        out_handle.write(
+                            f'{ind},{distance},{duration},{compute_mode},{mapping_str},{num_smiles1},{num_smiles2}\n'
+                            )
+                else:
+                    for ind, distance, duration, compute_mode, mapping in results:
+                        out_handle.write(
+                            f'{ind},{distance},{duration},{compute_mode},{mapping_str}\n'
+                            )
+            elif args.num_smiles:                        
+                for ind, distance, duration, compute_mode, num_smiles1, num_smiles2 in results:
+                        out_handle.write(
+                            f'{ind},{distance},{duration},{compute_mode},{num_smiles1},{num_smiles2}\n'
+                            )
             else:
                 for ind, distance, duration, compute_mode in results:
-                        out_handle.write(f'{ind},{distance},{duration},{compute_mode}\n')
+                        out_handle.write(
+                            f'{ind},{distance},{duration},{compute_mode}\n'
+                            )
 
 
 if __name__ == '__main__':
