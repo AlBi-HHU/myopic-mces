@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
                         'path to a HDF5 file with precomputed MCES distances. Computation for these instances will be '
                         'skipped, using the provided values. HDF5 has to contain distances (key `mces`) and SMILES '
-                        '(`mces_smiles_order`), like the HDF5 files produced by this script. ', action='store_true')
+                        '(`mces_smiles_order`), like the HDF5 files produced by this script. ')
     parser.add_argument('--lookup_threshold', help='(experimental) Use with `--use_matrix_lookup`: '
                         'Precomputed values equal or greater than the threshold will be ignored; these '
                         'instances will be recomputed', default=None, type=float)
