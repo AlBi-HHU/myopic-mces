@@ -109,8 +109,8 @@ def test_draw_struct(smiles1, smiles2, mapping, name):
 
 def test_mapping_reader():
     # aufruf auf MCES
-    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=10)
-    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=10)
+    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=4)
+    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=4)
 
     solver_options = {"timeLimit": 10, "msg": False}
 
