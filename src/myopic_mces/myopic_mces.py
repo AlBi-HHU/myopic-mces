@@ -292,20 +292,21 @@ def main():
         with open(args.output, 'w') as out_handle:
             if args.structure:
 
-                if mapping is not None:
-                        mapping_str = repr(mapping).replace(', ', ',').replace(': ', ':')
-                else:
-                    mapping_str = ''
+                def format_mapping(mapping):
+                    if mapping is None:
+                        return ''
+                    mapping_str = repr(mapping).replace(', ', ',').replace(': ', ':')
+                    return f'"{mapping_str}"'
 
                 if args.num_smiles:
                     for ind, distance, duration, compute_mode, mapping, num_smiles1, num_smiles2 in results:
                         out_handle.write(
-                            f'{ind},{distance},{duration},{compute_mode},{mapping_str},{num_smiles1},{num_smiles2}\n'
+                            f'{ind},{distance},{duration},{compute_mode},{format_mapping(mapping)},{num_smiles1},{num_smiles2}\n'
                             )
                 else:
                     for ind, distance, duration, compute_mode, mapping in results:
                         out_handle.write(
-                            f'{ind},{distance},{duration},{compute_mode},{mapping_str}\n'
+                            f'{ind},{distance},{duration},{compute_mode},{format_mapping(mapping)}\n'
                             )
             elif args.num_smiles:                        
                 for ind, distance, duration, compute_mode, num_smiles1, num_smiles2 in results:
