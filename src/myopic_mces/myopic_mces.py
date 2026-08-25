@@ -11,6 +11,7 @@ import sys
 from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
 from myopic_mces.filter_MCES import apply_filter, ComputationMode
+from myopic_mces.filter_MCES import apply_CPP_filter
 
 def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
@@ -60,8 +61,10 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
     """
     start = time.time()
     # construct graph for both smiles. if we want to calculate the MCES structure mapping, we need save_mol
-    G1 = construct_graph(smiles1, save_mol=structure, num_smiles=num_smiles)
-    G2 = construct_graph(smiles2, save_mol=structure, num_smiles=num_smiles)
+    # G1 = construct_graph(smiles1, save_mol=structure, num_smiles=num_smiles)
+    # G2 = construct_graph(smiles2, save_mol=structure, num_smiles=num_smiles)
+    G1 = construct_graph(smiles1, save_mol=True, num_smiles=num_smiles)
+    G2 = construct_graph(smiles2, save_mol=True, num_smiles=num_smiles)
     if num_smiles:
         num_smiles1 = G1.num_smiles
         num_smiles2 = G2.num_smiles
@@ -70,8 +73,10 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
     if threshold != -1:         # with `-1` always compute exact distance
         # filter out if distance is above the threshold
         try:
-            distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound,
-                                                  use_bound_zero=use_bound_zero)
+            # distance, compute_mode = apply_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound,
+            #                                       use_bound_zero=use_bound_zero)
+            distance, compute_mode = apply_CPP_filter(G1, G2, threshold, always_stronger_bound=always_stronger_bound,
+                                                              use_bound_zero=use_bound_zero)
             if distance > threshold:
                 if structure:
                     if num_smiles:

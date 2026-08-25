@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+#requires = ["hatchling"]
+# scikit-build-core for cmake
+requires = ["hatchling>=1.24.2", "scikit-build-core[hatchling]>=0.9.3"]
 build-backend = "hatchling.build"
 [project]
 name = "myopic_mces"
@@ -43,3 +45,8 @@ dev = [
 testpaths = [
     "tests/"
 ]
+
+[tool.hatch.build.targets.wheel.hooks.scikit-build]
+experimental = true
+# tell hatch where .so file for cpp filters is
+cmake.source-dir = "src/cpp"
