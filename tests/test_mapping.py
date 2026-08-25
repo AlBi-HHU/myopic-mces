@@ -116,8 +116,8 @@ def test_draw_struct(smiles1, smiles2, mapping, name):
 
 def test_mapping_reader():
     # aufruf auf MCES
-    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=1)
-    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=1)
+    data = pd.read_csv("testdata/test_struct_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=3)
+    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=3)
 
     solver_options = {"timeLimit": 10, "msg": False}
 
@@ -150,12 +150,12 @@ def test_mapping_reader():
 
     reference["mapping"] = reference["mapping"].map(parse_mapping)
 
-    for result, ref in zip(results, reference.itertuples(index=i)):
-        i, dist, _, _, mapping, n1, n2 = result
+    for result, ref in zip(results, reference.itertuples(index=False)):
+        _, _, _, _, mapping, n1, n2 = result
 
-        test_draw_struct(n1, n2, mapping, str(i))
+        #test_draw_struct(n1, n2, mapping, str(i))
 
-        assert len(mapping) == len(ref.mapping)
+        assert mapping == ref.mapping
         assert n1 == ref.num_smiles1
         assert n2 == ref.num_smiles2
 
