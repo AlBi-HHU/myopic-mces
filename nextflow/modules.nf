@@ -126,3 +126,25 @@ process SANITY_CHECK {
         python3 "${script}" "${combined}" ${params.threshold} ${always_stronger} ${params.sanity_samples}
         """
 }
+
+// ── 5. WRITE_TO_DB ───────────────────────────────────────────────────────────
+// Upserts the combined HDF5 results into the mces database via the
+// `import-mces` CLI from the mces-database package. Connection parameters
+// come from the standard PostgreSQL environment variables.
+
+process WRITE_TO_DB {
+    tag 'write_to_db'
+    publishDir "${params.out}", mode: 'copy', pattern: 'db_import.log'
+
+    input:
+        path combined
+        val format
+
+    output:
+        path 'db_import.log', emit: log
+
+    script:
+        """
+        import-mces "${combined}" --format ${format} > db_import.log 2>&1
+        """
+}

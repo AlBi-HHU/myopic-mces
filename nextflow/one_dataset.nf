@@ -7,7 +7,7 @@
 // Options:
 //   --threshold 10 --batch_size 224960000 --use_db_lookup --out results
 
-include { PREPARE_INPUT_ONE; COMPUTE_BATCH; COMBINE_BATCHES; SANITY_CHECK } from './modules'
+include { PREPARE_INPUT_ONE; COMPUTE_BATCH; COMBINE_BATCHES; SANITY_CHECK; WRITE_TO_DB } from './modules'
 
 workflow {
     if (!params.smiles) {
@@ -31,5 +31,10 @@ workflow {
     // 4. Sanity check
     if (params.sanity_check) {
         SANITY_CHECK(combined_ch, file('nextflow/sanity_check.py'))
+    }
+
+    // 5. Write computed distances back to the mces database
+    if (params.write_to_db) {
+        WRITE_TO_DB(combined_ch, 'hdf5_allvsall')
     }
 }
