@@ -25,6 +25,13 @@ jobs:
 
       - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
 
-      - name: Setup tmate session
+      # - name: Setup tmate session
+      #   if: ${{ failure() }}
+      #   uses: mxschmitt/action-tmate@v3
+
+      - name: Upload failed MCES structure SVG
         if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-test-structure
+          path: "testdata/mces_struct_*.svg"
