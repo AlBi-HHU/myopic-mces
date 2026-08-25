@@ -26,5 +26,5 @@ jobs:
       - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
 
       - name: Setup tmate session
-          if: ${{ failure() }}
-          uses: mxschmitt/action-tmate@v3
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
