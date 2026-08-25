@@ -119,7 +119,7 @@ def test_mapping_reader():
     data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=1)
     reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=1)
 
-    solver_options = {"timeLimit": 10, "msg": False, "randomSeed": 42}
+    solver_options = {"timeLimit": 10, "msg": False}
 
     results = Parallel(n_jobs=-2)(
         delayed(MCES)(
