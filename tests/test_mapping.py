@@ -144,7 +144,9 @@ def test_mapping_reader():
     reference["mapping"] = reference["mapping"].map(parse_mapping)
 
     for result, ref in zip(results, reference.itertuples(index=False)):
-        _, _, _, _, mapping, n1, n2 = result
+        i, _, _, _, mapping, n1, n2 = result
+
+        test_draw_struct(n1, n2, mapping, str(i))
 
         assert mapping == ref.mapping
         assert n1 == ref.num_smiles1
