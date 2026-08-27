@@ -15,6 +15,18 @@ input-file: `index,SMILES1,SMILES2`
 
 output-file: `index,myopic MCES distance,computation time in seconds,computation mode`
 
+The output file contains additional information if the MCES mapping for the structure and/or CXSMILES are computed:
+
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping`
+
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping,cxsmiles1,cxsmiles2`
+
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,cxsmiles1,cxsmiles2`
+
+If the MCES structure is computed, it is saved as a mapping. If the CXSMILES are saved as well, they contain the indexed smiles in which each atom is numbered. The structure mapping has the format `{(AtomID_SMILES1, AtomID_SMILES1): (AtomID_SMILES2, AtomID_SMILES2)}`, where the first AtomID pair is a bond in the molecule depicted by SMILES1 and the second pair is a bond in the molecule depicted by
+SMILES2.
+
+
 Download via pip and execute:
 ```bash
 pip install myopic-mces
@@ -45,7 +57,7 @@ pip install pulp[cbc]
 
 General options
 ```
---threshold  int        Threshold for the comparison.
+--threshold int         Threshold for the comparison.
                         Exact distance is only calculated if the distance is lower than the threshold.
                         If set to -1 the exact distance is always calculated.
                         Default: 10
@@ -103,7 +115,12 @@ Experimental options for myopic MCES distance computation
                             NOTE: When used in combination with `prepare_input`, only use with `--no_shuffle`.
 
 --lookup_threshold          Use with `--use_matrix_lookup`: Precomputed values equal or greater than the threshold 
-                            will be ignored; these instances will be recomputed
+                            will be ignored; these instances will be recomputed.
+
+--num_smiles                If set, calculates and saves SMILES of numbered atoms to the output for each input smiles.
+
+--structure                 If set, saves a mapping of the pairwise MCES structure to the output. Only calculated for molecules
+                            for which the MCES distance has been proven exact by the ILP.
 
 ```
 
