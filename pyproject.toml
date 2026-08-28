@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "myopic_mces"
-version = "1.3.1"
+version = "1.3.2"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -31,6 +31,9 @@ myopic_mces = "myopic_mces.myopic_mces:main"
 cplex = [
     "cplex>=22.1.1.2",
     "docplex>=2.32.264",
+]
+hdf5 = [
+    "h5py>=3.0",
 ]
 
 [dependency-groups]
