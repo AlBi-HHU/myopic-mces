@@ -74,7 +74,7 @@ process COMPUTE_BATCH {
             --hdf5_mode "${batch}" tmpout \\
             --threshold ${params.threshold} \\
             --solver ${solver} \\
-            --num_jobs ${task.cpus} \\
+            --num_jobs -1 \\
             --solver_onethreaded \\
             --solver_no_msg \\
             ${dyn}
