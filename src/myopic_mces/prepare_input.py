@@ -2,25 +2,33 @@ from random import shuffle
 from argparse import ArgumentParser
 from os.path import join, exists
 from os import mkdir
+import contextlib
 import time
 import numpy as np
 
 from myopic_mces.filter_MCES import ComputationMode
 
-def filter_inputs(smiles_list,index,dmatrix_file,threshold=None):
+def _load_mces_matrix(dmatrix_file):
+    """Load a precomputed MCES distance matrix HDF5 lookup once, for reuse across batches."""
     from scipy.spatial.distance import squareform
     import h5py
+    with h5py.File(dmatrix_file, 'r') as hf:
+        mces = hf['mces'][:]
+        all_smiles = [s.decode() for s in hf['mces_smiles_order'][:]] # Since here the input is csv we need to decode the lookup
+    mces = squareform(mces)
+    smiles_index = {smiles: i for i, smiles in enumerate(all_smiles)}
+    return mces, smiles_index
+
+
+def filter_inputs(smiles_list, index, dmatrix_file, threshold=None, _matrix=None, _smiles_index=None):
     print('filtering for precomputed mces')
     filtered_inputs = []
     precomputed_mces = []
     precomputed_index = []
-    with h5py.File(dmatrix_file,'r') as hf:
-            mces = hf["mces"][:]
-            all_smiles =[s.decode() for s in hf['mces_smiles_order'][:]] # Since here the input is csv we need to decode the lookup
-    mces = squareform(mces)
-    smiles_index = {}
-    for i, smiles in enumerate(all_smiles):
-        smiles_index[smiles] = i
+    if _matrix is None or _smiles_index is None:
+        mces, smiles_index = _load_mces_matrix(dmatrix_file)
+    else:
+        mces, smiles_index = _matrix, _smiles_index
     for i, s1, s2 in index:
         idx1 = smiles_index.get(smiles_list[s1])
         idx2 = smiles_index.get(smiles_list[s2])
@@ -37,26 +45,9 @@ def filter_inputs(smiles_list,index,dmatrix_file,threshold=None):
     return np.array(filtered_inputs),np.array(precomputed_index) ,precomputed_mces
 
 
-def db_filter_inputs(smiles_list, index, client, threshold, always_stronger_bound, batch_size=50000):
-    """Filter precomputed MCES distances from the MCES database (mcesdb).
-
-    Analogous to filter_inputs but queries a mcesdb PostgreSQL backend instead of
-    a local HDF5 lookup matrix.
-    
-    An exact distance strictly below the threshold is reused
-    directly, and a stored lower bound strictly above the threshold is reused as a
-    bound. The choice between mces_match2_lower (always_stronger_bound=True, which
-    corresponds to filter2 / STRONGEST_BOUND) and best_lower_bound
-    (always_stronger_bound=False / dynamic mode, UNKNOWN) mirrors which bound
-    apply_filter would actually have computed.
-
-    Pairs in the DB are stored symmetrically in both orientations using first block inchikeys.
-    """
-    print('filtering for precomputed mces (DB)')
-    t0 = time.time()
+def _build_inchikey_cache(smiles_list):
+    """Pre-convert unique SMILES to first block inchikeys, once, for reuse across batches."""
     from rdkit import Chem
-
-    # pre-convert unique SMILES to first block inchikeys
     smiles_to_inchikey = {}
     for s in smiles_list:
         if isinstance(s, bytes):
@@ -65,6 +56,31 @@ def db_filter_inputs(smiles_list, index, client, threshold, always_stronger_boun
             continue
         mol = Chem.MolFromSmiles(s)
         smiles_to_inchikey[s] = Chem.MolToInchiKey(mol)[:14] if mol is not None else None
+    return smiles_to_inchikey
+
+
+def db_filter_inputs(smiles_list, index, client, threshold, always_stronger_bound, batch_size=50000, smiles_to_inchikey=None):
+    """Filter precomputed MCES distances from the MCES database (mcesdb).
+
+    Analogous to filter_inputs but queries a mcesdb PostgreSQL backend instead of
+    a local HDF5 lookup matrix.
+
+    An exact distance strictly below the threshold is reused
+    directly, and a stored lower bound strictly above the threshold is reused as a
+    bound. The choice between mces_match2_lower (always_stronger_bound=True, which
+    corresponds to filter2 / STRONGEST_BOUND) and best_lower_bound
+    (always_stronger_bound=False / dynamic mode, UNKNOWN) mirrors which bound
+    apply_filter would actually have computed.
+
+    Pairs in the DB are stored symmetrically in both orientations using first block inchikeys.
+
+    TODO: we will have to think up something when we get multiple billion DB hits
+    """
+    print('filtering for precomputed mces (DB)')
+    t0 = time.time()
+
+    if smiles_to_inchikey is None:
+        smiles_to_inchikey = _build_inchikey_cache(smiles_list)
 
     filtered_inputs = []
     precomputed_mces = []
@@ -177,19 +193,17 @@ if __name__ == '__main__':
             smiles_input1 = [l.strip() for l in open(args.input_file).readlines()]
             smiles_input2 = [l.strip() for l in open(args.hdf5_extra_input_file).readlines()]
             smiles_input = smiles_input1 + smiles_input2
-            ninstances = len(smiles_input1) * len(smiles_input2)
+            n1, n2 = len(smiles_input1), len(smiles_input2)
+            ninstances = n1 * n2
             if ninstances >= np.iinfo(np.int64).max:
                 # can probably not happen anyways?
                 raise Exception('too many instances:', ninstances)
             nbatches = int(np.ceil(ninstances/args.batch_size))
-            print(f'read {len(smiles_input1):_}*{len(smiles_input2):_} SMILES as input -> {ninstances:_} instances '
+            print(f'read {n1:_}*{n2:_} SMILES as input -> {ninstances:_} instances '
                   f'-> {nbatches} batches of {args.batch_size:_}')
-            print('creating full index array')
-            index_array_full = np.zeros((ninstances, 3), dtype='int64')
-            index_array_full[:, 0] = np.arange(ninstances)
-            index_array_full[:, 1:] = np.stack(np.meshgrid(range(0, len(smiles_input1)),
-                                                           range(len(smiles_input1), len(smiles_input))),
-                                               axis=-1).reshape(-1, 2)
+
+            def unrank(k):
+                return k // n2, n1 + (k % n2)
         # one input file
         else:
             smiles_input = [l.strip() for l in open(args.input_file).readlines()]
@@ -200,54 +214,89 @@ if __name__ == '__main__':
                 raise Exception('too many instances:', ninstances)
             nbatches = int(np.ceil(ninstances/args.batch_size))
             print(f'read {n:_} SMILES as input -> {ninstances:_} instances -> {nbatches} batches of {args.batch_size:_}')
-            print('creating full index array')
-            index_array_full = np.zeros((ninstances, 3), dtype='int64')
-            index_array_full[:, 0] = np.arange(ninstances)
-            index_array_full[:, 1:] = np.stack(np.triu_indices(n, k=1), axis=-1)
-        if (not args.no_shuffle):
-            print('shuffling full index array')
-            np.random.shuffle(index_array_full)
+            # cumulative pair-count offset of each row in triu(n, k=1) order, used to
+            # unrank a linear pair ordinal into (row, col) without materializing all pairs
+            row_idx = np.arange(n, dtype=np.int64)
+            row_starts = row_idx*(n-1) - row_idx*(row_idx-1)//2
+
+            def unrank(k):
+                i = np.searchsorted(row_starts, k, side='right') - 1
+                j = i + 1 + (k - row_starts[i])
+                return i, j
+
+        if not args.no_shuffle:
+            print('NOTE: --hdf5_mode generates batches in a memory-bounded streaming '
+                  'fashion and does not support shuffling; batches are contiguous '
+                  'ranges of the pair ordering regardless of --no_shuffle.')
+
+        # shared per-run lookup state, built once and reused for every batch below
+        inchikey_cache = None
+        matrix_cache = matrix_smiles_index_cache = None
+        db_ctx = contextlib.nullcontext()
         if args.use_db_lookup:
             from mcesdb import McesDbClient
+            inchikey_cache = _build_inchikey_cache(smiles_input)
             # empty conninfo -> libpq falls back to PGHOST/PGDATABASE/... env vars
-            with McesDbClient("") as client:
-                index_array_full, precomputed_index, precomputed_mces = db_filter_inputs(
-                    smiles_list=smiles_input, index=index_array_full, client=client,
-                    threshold=args.threshold, always_stronger_bound=not args.choose_bound_dynamically)
-            print(f'Found {len(precomputed_index):_} precomputed MCES -> {len(index_array_full):_} instances left to compute'
-                  f'-> {int(np.ceil(index_array_full.shape[0]/args.batch_size))} batches of {args.batch_size:_} and 1 precomputed batch')
+            db_ctx = McesDbClient("")
         elif args.use_matrix_lookup:
-            index_array_full, precomputed_index,precomputed_mces = filter_inputs(smiles_list=smiles_input,index=index_array_full, dmatrix_file=args.use_matrix_lookup,threshold=args.lookup_threshold)
-            print(f'Found {len(precomputed_index):_} precomputed MCES -> {len(index_array_full):_} instances left to compute'
-                  f'-> {int(np.ceil(index_array_full.shape[0]/args.batch_size))} batches of {args.batch_size:_} and 1 precomputed batch')
-        # splitting
+            matrix_cache, matrix_smiles_index_cache = _load_mces_matrix(args.use_matrix_lookup)
+
         if (not exists(args.out_folder)):
             mkdir(args.out_folder)
         print('creating batches')
-        has_precomputed = (args.use_matrix_lookup or args.use_db_lookup) and precomputed_index.shape[0] > 0
-        # when a precomputed batch exists it takes slot 0 (batch0_precomputed),
+        # when any precomputed pairs turn up, they take slot 0 (batch0_precomputed),
         # and the to-compute batches start at 1 so they sort after it
-        i_offset = 1 if has_precomputed else 0
-        if has_precomputed:
-            file_path = join(args.out_folder, 'batch0_precomputed.hdf5')
-            print(f'creating batch0_precomputed at {file_path} with precomputed mces...', end=' ')
-            with h5py.File(file_path, 'w') as f:
-                f.create_dataset('computation_indices', data=precomputed_index, dtype='int64', compression='gzip')
-                f.create_dataset('mces', data=[row[1] for row in precomputed_mces], compression='gzip')
-                f.create_dataset('smiles', data=smiles_input)
-                f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in precomputed_mces], compression='gzip')
-                f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in precomputed_mces], compression='gzip')
-            print('done')
-        if index_array_full.shape[0] >0:
-            for i, batch in enumerate(np.array_split(index_array_full, (index_array_full.shape[0]/args.batch_size)+1)):
-                file_path = join(args.out_folder, f'batch{i + i_offset}.hdf5')
-                print(f'creating batch {i + i_offset} at {file_path}...', end=' ')
+        i_offset = 1 if (args.use_matrix_lookup or args.use_db_lookup) else 0
+        precomputed_index_all = []
+        precomputed_mces_all = []
+        written_batches = 0
+
+        with db_ctx as client:
+            for b in range(nbatches):
+                k = np.arange(b*args.batch_size, min((b+1)*args.batch_size, ninstances), dtype=np.int64)
+                i_arr, j_arr = unrank(k)
+                batch_index = np.stack([k, i_arr, j_arr], axis=1)
+
+                if args.use_db_lookup:
+                    batch_index, pre_idx, pre_mces = db_filter_inputs(
+                        smiles_list=smiles_input, index=batch_index, client=client,
+                        threshold=args.threshold, always_stronger_bound=not args.choose_bound_dynamically,
+                        smiles_to_inchikey=inchikey_cache)
+                    precomputed_index_all.extend(pre_idx.tolist())
+                    precomputed_mces_all.extend(pre_mces)
+                elif args.use_matrix_lookup:
+                    batch_index, pre_idx, pre_mces = filter_inputs(
+                        smiles_list=smiles_input, index=batch_index, dmatrix_file=args.use_matrix_lookup,
+                        threshold=args.lookup_threshold, _matrix=matrix_cache, _smiles_index=matrix_smiles_index_cache)
+                    precomputed_index_all.extend(pre_idx.tolist())
+                    precomputed_mces_all.extend(pre_mces)
+
+                if batch_index.shape[0] > 0:
+                    file_path = join(args.out_folder, f'batch{written_batches + i_offset}.hdf5')
+                    print(f'creating batch {written_batches + i_offset} at {file_path} '
+                          f'({batch_index.shape[0]:_} instances)...', end=' ')
+                    with h5py.File(file_path, 'w') as f:
+                        f.create_dataset('computation_indices', data=batch_index, dtype='int64', compression='gzip')
+                        f.create_dataset('smiles', data=smiles_input)
+                        f.attrs['original_path'] = file_path
+                    print('done')
+                    written_batches += 1
+
+        if args.use_matrix_lookup or args.use_db_lookup:
+            print(f'Found {len(precomputed_index_all):_} precomputed MCES -> '
+                  f'{ninstances - len(precomputed_index_all):_} instances left to compute')
+            if len(precomputed_index_all) > 0:
+                file_path = join(args.out_folder, 'batch0_precomputed.hdf5')
+                print(f'creating batch0_precomputed at {file_path} with precomputed mces...', end=' ')
                 with h5py.File(file_path, 'w') as f:
-                    f.create_dataset('computation_indices', data=batch, dtype='int64', compression='gzip')
+                    f.create_dataset('computation_indices', data=np.array(precomputed_index_all), dtype='int64', compression='gzip')
+                    f.create_dataset('mces', data=[row[1] for row in precomputed_mces_all], compression='gzip')
                     f.create_dataset('smiles', data=smiles_input)
-                    f.attrs['original_path'] = file_path
+                    f.create_dataset('computation_times', data=[row[2] if len(row) > 2 else -1 for row in precomputed_mces_all], compression='gzip')
+                    f.create_dataset('computation_modes', data=[row[3] if len(row) > 3 else -1 for row in precomputed_mces_all], compression='gzip')
                 print('done')
-        else:
+
+        if written_batches == 0:
             print("Nothing to compute, everything cached")
     else:
         pairs = [line.strip() for line in open(args.input_file).readlines() if not line.startswith('i,smiles')]
