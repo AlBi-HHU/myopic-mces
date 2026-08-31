@@ -14,10 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git openssh-cli
 WORKDIR /app
 ENV UV_LINK_MODE=copy
 
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=ssh uv sync --locked --extra db --extra hdf5 --no-install-project
-
 COPY . .
-RUN --mount=type=ssh uv sync --locked --extra db --extra hdf5
+RUN --mount=type=ssh --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --extra db --extra hdf5
 
 ENV PATH="/app/.venv/bin:$PATH"

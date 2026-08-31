@@ -1,0 +1,16 @@
+.git
+.venv
+dist
+work
+results
+.nextflow*
+__pycache__
+.pytest_cache
+.agent-shell
+.e2e_dryrun
+*.hdf5
+*.csv
+*.log
+*.pid
+example
+tests/testdata
