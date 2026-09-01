@@ -1,40 +1,32 @@
 cmake_minimum_required(VERSION 3.16)
-project(mm_filters LANGUAGES CXX)
+project(mm_filters)
 
 include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 
-# folder inclusion paths for conda env on all architectures
+# module target
+add_library(mmces_filters SHARED 
+            bindings.cpp
+            filter0.cpp
+            filter1.cpp
+            filter2.cpp
+            Hungarian.cpp)
 
-if(WIN32)
-    set(CONDA_INCLUDE_DIR "$ENV{CONDA_PREFIX}/Library/include")
-    set(CONDA_LIB_DIR     "$ENV{CONDA_PREFIX}/Library/lib")
-else()
-    set(CONDA_INCLUDE_DIR "$ENV{CONDA_PREFIX}/include")
-    set(CONDA_LIB_DIR     "$ENV{CONDA_PREFIX}/lib")
-endif()
-
-list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
-
-add_library(mmces_filters SHARED
-    bindings.cpp
-    filter0.cpp
-    filter1.cpp
-    filter2.cpp
-    Hungarian.cpp
-)
-
-target_include_directories(mmces_filters PRIVATE 
+# folder inclusion paths
+if(DEFINED ENV{CONDA_PREFIX})
+    target_include_directories(mmces_filters PRIVATE 
         $ENV{CONDA_PREFIX}/include
         $ENV{CONDA_PREFIX}/include/rdkit
     )
     target_link_directories(mmces_filters PRIVATE 
         $ENV{CONDA_PREFIX}/lib
     )
+endif()
 
 # link binaries
 target_link_libraries(mmces_filters PRIVATE 
@@ -46,11 +38,6 @@ target_link_libraries(mmces_filters PRIVATE
 )
 
 set_target_properties(mmces_filters PROPERTIES PREFIX "")
-if(WIN32)
-    set_target_properties(mmces_filters PROPERTIES SUFFIX ".pyd")
-endif()
 
 # makes sure compiled .so file is in correct place for python wheel
 install(TARGETS mmces_filters DESTINATION .)
-
-

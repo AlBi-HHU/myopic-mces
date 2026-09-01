@@ -1,15 +1,14 @@
 [build-system]
-#requires = ["hatchling"]
-# scikit-build-core for cmake
-requires = ["hatchling>=1.24.2", "scikit-build-core[hatchling]>=0.9.3"]
-build-backend = "hatchling.build"
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
 [project]
 name = "myopic_mces"
 version = "1.2.2"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",
@@ -22,8 +21,10 @@ dependencies = [
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
 ]
+
 [project.scripts]
 myopic_mces = "myopic_mces.myopic_mces:main"
+
 [project.urls]
 "Homepage" = "https://github.com/AlBi-HHU/myopic-mces"
 "Bug Tracker" = "https://github.com/AlBi-HHU/myopic-mces/issues"
@@ -41,12 +42,31 @@ dev = [
     "pandas>=2.0.3"
 ]
 
-[pytest]
-testpaths = [
-    "tests/"
-]
-
-[tool.hatch.build.targets.wheel.hooks.scikit-build]
-experimental = true
-# tell hatch where .so file for cpp filters is
+[tool.scikit-build]
 cmake.source-dir = "src/cpp"
+wheel.packages = ["src/myopic_mces"]
+wheel.expand-macos-universal-tags = false
+
+[tool.cibuildwheel]
+build = "cp311-* cp312-* cp313-*"
+skip = "*-musllinux_* pp*" # does not work with conda-forge boost
+test-requires = ["pytest"]
+
+# this final part is claude
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.linux]
+before-build = "bash {project}/ci/cibw_before_build_linux.sh"
+environment = { CONDA_PREFIX = "/tmp/mm_env", CMAKE_PREFIX_PATH = "/tmp/mm_env" }
+repair-wheel-command = "LD_LIBRARY_PATH=/tmp/mm_env/lib auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.macos]
+before-build = "bash {project}/ci/cibw_before_build_macos.sh"
+environment = { CONDA_PREFIX = "/tmp/mm_env", CMAKE_PREFIX_PATH = "/tmp/mm_env" }
+repair-wheel-command = "DYLD_LIBRARY_PATH=/tmp/mm_env/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.windows]
+before-build = "powershell {project}/ci/cibw_before_build_windows.ps1"
+environment = { CONDA_PREFIX = "C:\\mm_env", CMAKE_PREFIX_PATH = "C:\\mm_env" }
+repair-wheel-command = "delvewheel repair --add-path C:\\mm_env\\Library\\bin -w {dest_dir} {wheel}"
