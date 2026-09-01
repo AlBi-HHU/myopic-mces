@@ -69,6 +69,7 @@ process COMPUTE_BATCH {
         def cplex = params.cplex_home ? "PATH=${params.cplex_home}/bin/x86-64_linux/:\$PATH" : ''
         def solver = params.cplex_home ? params.solver : 'COIN_CMD'
         def dyn = params.choose_bound_dynamically ? '--choose_bound_dynamically' : ''
+        def time_limit = params.solver_time_limit_seconds ? "--solver_time_limit_seconds ${params.solver_time_limit_seconds}" : ''
         """
         ${cplex} myopic_mces \\
             --hdf5_mode "${batch}" tmpout \\
@@ -77,7 +78,8 @@ process COMPUTE_BATCH {
             --num_jobs -1 \\
             --solver_onethreaded \\
             --solver_no_msg \\
-            ${dyn}
+            ${dyn} \\
+            ${time_limit}
         """
 }
 
