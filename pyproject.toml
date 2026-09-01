@@ -50,16 +50,20 @@ wheel.expand-macos-universal-tags = false
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-*"
 skip = "*-musllinux_* pp*" # does not work with conda-forge boost
-test-requires = ["pytest"]
+test-requires = "pytest"
+test-command = "pytest -m 'not timelimit' -k 'not CPLEX_PY'"
 
 # this final part is claude
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 
+environment = { CIBW_AUDITWHEEL_LINUX_ARGS = "--plat manylinux2014_x86_64" }
+
 [tool.cibuildwheel.linux]
 before-build = "bash {project}/ci/cibw_before_build_linux.sh"
 environment = { CONDA_PREFIX = "/tmp/mm_env", CMAKE_PREFIX_PATH = "/tmp/mm_env" }
-repair-wheel-command = "LD_LIBRARY_PATH=/tmp/mm_env/lib auditwheel repair -w {dest_dir} {wheel}"
+#repair-wheel-command = "LD_LIBRARY_PATH=/tmp/mm_env/lib auditwheel repair -w {dest_dir} {wheel}"
+repair-wheel-command = "LD_LIBRARY_PATH=/tmp/mm_env/lib auditwheel show {wheel} && LD_LIBRARY_PATH=/tmp/mm_env/lib auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
 before-build = "bash {project}/ci/cibw_before_build_macos.sh"

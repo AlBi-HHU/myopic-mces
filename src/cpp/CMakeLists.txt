@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(mm_filters LANGUAGES CXX)
+cmake_policy(SET CMP0167 NEW)
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
 
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 # folder inclusion paths for conda env on all architectures
 
@@ -19,6 +21,9 @@ else()
 endif()
 
 list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
+
+set(BOOST_PY_COMPONENT "python${Python_VERSION_MAJOR}${Python_VERSION_MINOR}")
+find_package(Boost REQUIRED COMPONENTS ${BOOST_PY_COMPONENT})
 
 add_library(mmces_filters SHARED
     bindings.cpp
@@ -38,11 +43,17 @@ target_include_directories(mmces_filters PRIVATE
 
 # link binaries
 target_link_libraries(mmces_filters PRIVATE 
-    boost_python310
-    Python::Python
+    Boost::${BOOST_PY_COMPONENT}
+    Python::Module
     RDKitGraphMol
     RDKitDataStructs
     RDKitSmilesParse
+)
+
+#
+target_link_options(mmces_filters PRIVATE
+    -static-libstdc++
+    -static-libgcc
 )
 
 set_target_properties(mmces_filters PROPERTIES PREFIX "")
