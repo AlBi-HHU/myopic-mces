@@ -19,6 +19,7 @@ dependencies = [
              "pulp[cbc]>=2.7.0",
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
+             "tqdm>=4.70.0",
 ]
 [project.scripts]
 myopic_mces = "myopic_mces.myopic_mces:main"

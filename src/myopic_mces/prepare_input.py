@@ -3,8 +3,8 @@ from argparse import ArgumentParser
 from os.path import join, exists
 from os import mkdir
 import contextlib
-import time
 import numpy as np
+from tqdm import tqdm
 
 from myopic_mces.filter_MCES import ComputationMode
 
@@ -21,7 +21,6 @@ def _load_mces_matrix(dmatrix_file):
 
 
 def filter_inputs(smiles_list, index, dmatrix_file, threshold=None, _matrix=None, _smiles_index=None):
-    print('filtering for precomputed mces')
     filtered_inputs = []
     precomputed_mces = []
     precomputed_index = []
@@ -74,82 +73,82 @@ def db_filter_inputs(smiles_list, index, client, threshold, always_stronger_boun
 
     Pairs in the DB are stored symmetrically in both orientations using first block inchikeys.
 
-    TODO: we will have to think up something when we get multiple billion DB hits
+    `index` is walked in `batch_size`-sized slices, each resolved with exactly one
+    batched `get_pair_bounds` call. This bounds how many rows are ever held as
+    Python objects (the `pending` buffer, the DB response) at once to `batch_size`,
+    independent of how large `index` itself is - callers running huge crossproducts
+    (hundreds of millions of pairs in one call) would otherwise balloon memory by
+    materializing a Python tuple per row for the entire input up front.
     """
-    print('filtering for precomputed mces (DB)')
-    t0 = time.time()
-
     if smiles_to_inchikey is None:
         smiles_to_inchikey = _build_inchikey_cache(smiles_list)
 
     filtered_inputs = []
     precomputed_mces = []
     precomputed_index = []
-    # rows whose InChIKey pair we can identify, deferred for a single batched DB query
-    pending = []   # entries: (i, s1, s2, ik_a, ik_b) - canonical (min,max) InChIKey pair
 
-    for i, s1, s2 in index:
-        smi1 = smiles_list[s1]
-        smi2 = smiles_list[s2]
-        if isinstance(smi1, bytes):
-            smi1 = smi1.decode()
-        if isinstance(smi2, bytes):
-            smi2 = smi2.decode()
-        ik1 = smiles_to_inchikey.get(smi1)
-        ik2 = smiles_to_inchikey.get(smi2)
-        if ik1 is None or ik2 is None:
-            # can't identify the structure - has to be (re)computed
+    for chunk_start in range(0, len(index), batch_size):
+        chunk = index[chunk_start: chunk_start + batch_size]
+
+        # rows in this chunk whose InChIKey pair we can identify, resolved with a
+        # single batched DB query
+        pending = []   # entries: (i, s1, s2, ik_a, ik_b) - canonical (min,max) InChIKey pair
+        for i, s1, s2 in chunk:
+            smi1 = smiles_list[s1]
+            smi2 = smiles_list[s2]
+            if isinstance(smi1, bytes):
+                smi1 = smi1.decode()
+            if isinstance(smi2, bytes):
+                smi2 = smi2.decode()
+            ik1 = smiles_to_inchikey.get(smi1)
+            ik2 = smiles_to_inchikey.get(smi2)
+            if ik1 is None or ik2 is None:
+                # can't identify the structure - has to be (re)computed
+                filtered_inputs.append([i, s1, s2])
+                continue
+            # canonical ordering for symmetric-row lookup
+            aik, bik = (ik1, ik2) if ik1 <= ik2 else (ik2, ik1)
+            pending.append((i, s1, s2, aik, bik))
+
+        bound_map = {}
+        if pending:
+            resp = client.get_pair_bounds([(r[3], r[4]) for r in pending])
+            for r in resp:
+                # get_pair_bounds returns the canonical (min, max) pair back; key by it
+                bound_map[(r['inchikey_a'], r['inchikey_b'])] = r
+
+        for i, s1, s2, aik, bik in pending:
+            row = bound_map.get((aik, bik))
+            if row is None:
+                # pair not in the DB at all - recompute
+                filtered_inputs.append([i, s1, s2])
+                continue
+            exact = row.get('mces_exact')
+            best_lower = row.get('best_lower_bound')
+            match2_lower = row.get('mces_match2_lower')
+            # 1) exact distance already proven and below threshold -> reuse
+            #    (uses strict < to stay consistent with filter_inputs' matrix path)
+            if exact is not None and exact < threshold:
+                precomputed_mces.append((i, float(exact), -1, ComputationMode.EXACT.value))
+                precomputed_index.append([i, s1, s2])
+                continue
+            # 2) stronger bound short-circuit (always_stronger_bound=True corresponds
+            #    to apply_filter always computing filter2 -> STRONGEST_BOUND)
+            if always_stronger_bound and match2_lower is not None and match2_lower > threshold:
+                precomputed_mces.append((i, float(match2_lower), -1, ComputationMode.STRONGEST_BOUND.value))
+                precomputed_index.append([i, s1, s2])
+                continue
+            # 3) dynamic bound short-circuit (always_stronger_bound=False). Reuse the
+            #    stored best_lower_bound; the runtime filter would have picked the same
+            #    bound dynamically, so we mark the mode UNKNOWN (the specific filter
+            #    that produced this bound is not recoverable from best_lower_bound)
+            if (not always_stronger_bound) and best_lower is not None and best_lower > threshold:
+                precomputed_mces.append((i, float(best_lower), -1, ComputationMode.UNKNOWN.value))
+                precomputed_index.append([i, s1, s2])
+                continue
+            # 4) no usable bound known - recompute
             filtered_inputs.append([i, s1, s2])
-            continue
-        # canonical ordering for symmetric-row lookup
-        aik, bik = (ik1, ik2) if ik1 <= ik2 else (ik2, ik1)
-        pending.append((i, s1, s2, aik, bik))
 
-    # batch the DB query so a single staging-table round-trip stays bounded
-    bound_map = {}
-    for chunk_start in range(0, len(pending), batch_size):
-        chunk = pending[chunk_start: chunk_start + batch_size]
-        resp = client.get_pair_bounds([(r[3], r[4]) for r in chunk])
-        for r in resp:
-            # get_pair_bounds returns the canonical (min, max) pair back; key by it
-            aik = r['inchikey_a']
-            bik = r['inchikey_b']
-            bound_map[(aik, bik)] = r
-
-    for i, s1, s2, aik, bik in pending:
-        row = bound_map.get((aik, bik))
-        if row is None:
-            # pair not in the DB at all - recompute
-            filtered_inputs.append([i, s1, s2])
-            continue
-        exact = row.get('mces_exact')
-        best_lower = row.get('best_lower_bound')
-        match2_lower = row.get('mces_match2_lower')
-        # 1) exact distance already proven and below threshold -> reuse
-        #    (uses strict < to stay consistent with filter_inputs' matrix path)
-        if exact is not None and exact < threshold:
-            precomputed_mces.append((i, float(exact), -1, ComputationMode.EXACT.value))
-            precomputed_index.append([i, s1, s2])
-            continue
-        # 2) stronger bound short-circuit (always_stronger_bound=True corresponds
-        #    to apply_filter always computing filter2 -> STRONGEST_BOUND)
-        if always_stronger_bound and match2_lower is not None and match2_lower > threshold:
-            precomputed_mces.append((i, float(match2_lower), -1, ComputationMode.STRONGEST_BOUND.value))
-            precomputed_index.append([i, s1, s2])
-            continue
-        # 3) dynamic bound short-circuit (always_stronger_bound=False). Reuse the
-        #    stored best_lower_bound; the runtime filter would have picked the same
-        #    bound dynamically, so we mark the mode UNKNOWN (the specific filter
-        #    that produced this bound is not recoverable from best_lower_bound)
-        if (not always_stronger_bound) and best_lower is not None and best_lower > threshold:
-            precomputed_mces.append((i, float(best_lower), -1, ComputationMode.UNKNOWN.value))
-            precomputed_index.append([i, s1, s2])
-            continue
-        # 4) no usable bound known - recompute
-        filtered_inputs.append([i, s1, s2])
-
-    print(f'done, took {(time.time() - t0) / 60:.1f}min and found {len(precomputed_mces)} in DB, '
-          f'{len(filtered_inputs)} to go')
     return np.array(filtered_inputs), np.array(precomputed_index), precomputed_mces
 
 
@@ -161,6 +160,10 @@ if __name__ == '__main__':
     parser.add_argument('--hdf5_extra_input_file', help='in HDF5 mode, with this argument an extra input file (see above) can be provided: '
                         'pairs from `input_file`-SMILES and `hdf5_extra_input_file`-SMILES will then be generated', default=None)
     parser.add_argument('--batch_size', type=int, default=224960 * 100)
+    parser.add_argument('--lookup_chunk_size', type=int, default=2_000_000,
+                        help='(with --use_db_lookup / --use_matrix_lookup) maximum number of pairs '
+                        'resolved per filtering pass. Independent of --batch_size. Keep this low '
+                        'to reduce memory.')
     parser.add_argument('--batch_start', type=int, default=0)
     parser.add_argument('--no_shuffle', action='store_true')
     parser.add_argument('--use_matrix_lookup', help='(experimental) Use with the '
@@ -251,25 +254,56 @@ if __name__ == '__main__':
         precomputed_mces_all = []
         written_batches = 0
 
+        # one overall progress bar for the whole run: pairs checked/total, plus
+        # how many were found precomputed in the DB/matrix and the running hit rate
+        pbar = None
+        found_total = 0
+        if args.use_db_lookup or args.use_matrix_lookup:
+            pbar = tqdm(total=ninstances, desc='filtering', unit='pair', unit_scale=True)
+
         with db_ctx as client:
             for b in range(nbatches):
-                k = np.arange(b*args.batch_size, min((b+1)*args.batch_size, ninstances), dtype=np.int64)
-                i_arr, j_arr = unrank(k)
-                batch_index = np.stack([k, i_arr, j_arr], axis=1)
+                batch_start = b * args.batch_size
+                batch_end = min((b + 1) * args.batch_size, ninstances)
 
-                if args.use_db_lookup:
-                    batch_index, pre_idx, pre_mces = db_filter_inputs(
-                        smiles_list=smiles_input, index=batch_index, client=client,
-                        threshold=args.threshold, always_stronger_bound=not args.choose_bound_dynamically,
-                        smiles_to_inchikey=inchikey_cache)
-                    precomputed_index_all.extend(pre_idx.tolist())
-                    precomputed_mces_all.extend(pre_mces)
-                elif args.use_matrix_lookup:
-                    batch_index, pre_idx, pre_mces = filter_inputs(
-                        smiles_list=smiles_input, index=batch_index, dmatrix_file=args.use_matrix_lookup,
-                        threshold=args.lookup_threshold, _matrix=matrix_cache, _smiles_index=matrix_smiles_index_cache)
-                    precomputed_index_all.extend(pre_idx.tolist())
-                    precomputed_mces_all.extend(pre_mces)
+                if args.use_db_lookup or args.use_matrix_lookup:
+                    # Walk this (potentially huge) output batch in smaller lookup
+                    # chunks so filtering never materializes more than
+                    # `lookup_chunk_size` pairs as Python objects at once,
+                    # regardless of how large --batch_size is.
+                    to_compute_chunks = []
+                    for chunk_start in range(batch_start, batch_end, args.lookup_chunk_size):
+                        chunk_end = min(chunk_start + args.lookup_chunk_size, batch_end)
+                        k = np.arange(chunk_start, chunk_end, dtype=np.int64)
+                        i_arr, j_arr = unrank(k)
+                        chunk_index = np.stack([k, i_arr, j_arr], axis=1)
+
+                        if args.use_db_lookup:
+                            chunk_index, pre_idx, pre_mces = db_filter_inputs(
+                                smiles_list=smiles_input, index=chunk_index, client=client,
+                                threshold=args.threshold, always_stronger_bound=not args.choose_bound_dynamically,
+                                smiles_to_inchikey=inchikey_cache)
+                        else:
+                            chunk_index, pre_idx, pre_mces = filter_inputs(
+                                smiles_list=smiles_input, index=chunk_index, dmatrix_file=args.use_matrix_lookup,
+                                threshold=args.lookup_threshold, _matrix=matrix_cache, _smiles_index=matrix_smiles_index_cache)
+
+                        if len(pre_idx) > 0:
+                            precomputed_index_all.extend(pre_idx.tolist())
+                            precomputed_mces_all.extend(pre_mces)
+                        if chunk_index.shape[0] > 0:
+                            to_compute_chunks.append(chunk_index)
+
+                        found_total += len(pre_idx)
+                        pbar.update(chunk_end - chunk_start)
+                        pbar.set_postfix(found=found_total, hit_rate=f'{found_total / pbar.n:.2%}')
+
+                    batch_index = (np.concatenate(to_compute_chunks, axis=0) if to_compute_chunks
+                                   else np.empty((0, 3), dtype=np.int64))
+                else:
+                    k = np.arange(batch_start, batch_end, dtype=np.int64)
+                    i_arr, j_arr = unrank(k)
+                    batch_index = np.stack([k, i_arr, j_arr], axis=1)
 
                 if batch_index.shape[0] > 0:
                     file_path = join(args.out_folder, f'batch{written_batches + i_offset}.hdf5')
@@ -281,6 +315,9 @@ if __name__ == '__main__':
                         f.attrs['original_path'] = file_path
                     print('done')
                     written_batches += 1
+
+        if pbar is not None:
+            pbar.close()
 
         if args.use_matrix_lookup or args.use_db_lookup:
             print(f'Found {len(precomputed_index_all):_} precomputed MCES -> '
