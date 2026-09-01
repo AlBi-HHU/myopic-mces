@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 
 PYTAG=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 ENV_PATH=/tmp/mm_env

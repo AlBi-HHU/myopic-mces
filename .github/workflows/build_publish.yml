@@ -17,16 +17,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15-intel, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-vs2026-arm, macos-15-intel, macos-latest]
 
     steps:
     - name: Checkout repository code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.12"
+        python-version: "3.10"
         cache: "pip"
 
     # build wheels
@@ -48,8 +48,9 @@ jobs:
     environment: pypi
     permissions:
        id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+       content: write   # PEP 740 attestation
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v4
         with:
           pattern: cibw-*
           path: dist 
