@@ -259,9 +259,6 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
             raise Exception('unknown ILP status: ', ILP.status, pulp.constants.LpStatus[ILP.status])
 
 def add_MCES_to_molgraphs(ILP, G1, G2):
-    """
-    
-    """
     mapping_G1_to_G2 = {}
     for i, v in enumerate(ILP.variables()):
         if (v.name.startswith('nodepairs_') and v.value() == 1):

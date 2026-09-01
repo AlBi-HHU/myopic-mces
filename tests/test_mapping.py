@@ -36,81 +36,88 @@ def test_draw_struct(smiles1, smiles2, mapping, name):
     Draws MCES structure for two numbered SMILES strings and their mapping.
     Renumbers atoms based on the atommap encoded in the SMILES metadata.
     """
-    raw_mol1 = Chem.MolFromSmiles(smiles1)
-    raw_mol2 = Chem.MolFromSmiles(smiles2)
+    if mapping is not None:
+        raw_mol1 = Chem.MolFromSmiles(smiles1)
+        raw_mol2 = Chem.MolFromSmiles(smiles2)
 
-    dopts = rdMolDraw2D.MolDrawOptions()
-    dopts.addAtomIndices = True
-    dopts.setHighlightColour((.53, .87, .53, 1))
-    dopts.noAtomLabels = True
+        dopts = rdMolDraw2D.MolDrawOptions()
+        dopts.addAtomIndices = True
+        dopts.setHighlightColour((.53, .87, .53, 1))
+        dopts.noAtomLabels = True
 
-    svg = MolsMatrixToGridImage(
-                        [[raw_mol1, raw_mol2]],
-                        drawOptions=dopts,
-                        subImgSize=(400,400),
-                        useSVG=True,
-                        )
+        svg = MolsMatrixToGridImage(
+                            [[raw_mol1, raw_mol2]],
+                            drawOptions=dopts,
+                            subImgSize=(400,400),
+                            useSVG=True,
+                            )
 
-    svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
-    with open(f'testdata/raw_struct_{name}.svg', 'w') as out:
-        out.write(svg_all_white)
+        svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
+        with open(f'testdata/raw_struct_{name}.svg', 'w') as out:
+            out.write(svg_all_white)
 
-    # renumber them with their atommap
-    order1 = [atom.GetIdx() for atom in sorted(raw_mol1.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
-    mol1 = Chem.RenumberAtoms(raw_mol1, order1)
-    
-    order2 = [atom.GetIdx() for atom in sorted(raw_mol2.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
-    mol2 = Chem.RenumberAtoms(raw_mol2, order2)
-
-    dopts = rdMolDraw2D.MolDrawOptions()
-    dopts.addAtomIndices = True
-    dopts.setHighlightColour((.53, .87, .53, 1))
-    dopts.noAtomLabels = True
-
-    # in highlight bonds, highlight only the ones that are in the MCES struct derived from add_MCES_to_molgraphs
-    svg = MolsMatrixToGridImage(
-                        [[mol1, mol2]],
-                        drawOptions=dopts,
-                        subImgSize=(400,400),
-                        useSVG=True,
-                        )
-
-    svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
-    with open(f'testdata/reordered_struct_{name}.svg', 'w') as out:
-        out.write(svg_all_white)
-
-    G1_edges = []
-    G2_edges = []
-    mapping = ast.literal_eval(str(mapping))
-
-    for atom_pair_G1 in mapping.keys():
-        G1_edges.append(mol1.GetBondBetweenAtoms(*atom_pair_G1).GetIdx())
-
-    for atom_pair_G2 in mapping.values():
-        G2_edges.append(mol2.GetBondBetweenAtoms(*atom_pair_G2).GetIdx())
+        # renumber them with their atommap
+        order1 = [atom.GetIdx() for atom in sorted(raw_mol1.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
+        mol1 = Chem.RenumberAtoms(raw_mol1, order1)
         
-    dopts = rdMolDraw2D.MolDrawOptions()
-    dopts.addAtomIndices = True
-    dopts.setHighlightColour((.53, .87, .53, 1))
-    dopts.noAtomLabels = True
+        order2 = [atom.GetIdx() for atom in sorted(raw_mol2.GetAtoms(), key=lambda x: x.GetAtomMapNum())]
+        mol2 = Chem.RenumberAtoms(raw_mol2, order2)
 
-    # in highlight bonds, highlight only the ones that are in the MCES struct derived from add_MCES_to_molgraphs
-    svg = MolsMatrixToGridImage(
-                        [[mol1, mol2]],
-                        drawOptions=dopts,
-                        subImgSize=(400,400),
-                        highlightBondListsMatrix=[[G1_edges, G2_edges]],
-                        useSVG=True,
-                        )
+        dopts = rdMolDraw2D.MolDrawOptions()
+        dopts.addAtomIndices = True
+        dopts.setHighlightColour((.53, .87, .53, 1))
+        dopts.noAtomLabels = True
 
-    svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
-    with open(f'testdata/mces_struct_{name}.svg', 'w') as out:
-        out.write(svg_all_white)
+        # in highlight bonds, highlight only the ones that are in the MCES struct derived from add_MCES_to_molgraphs
+        svg = MolsMatrixToGridImage(
+                            [[mol1, mol2]],
+                            drawOptions=dopts,
+                            subImgSize=(400,400),
+                            useSVG=True,
+                            )
+
+        svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
+        with open(f'testdata/reordered_struct_{name}.svg', 'w') as out:
+            out.write(svg_all_white)
+
+        G1_edges = []
+        G2_edges = []
+        mapping = ast.literal_eval(str(mapping))
+
+        for atom_pair_G1 in mapping.keys():
+            G1_edges.append(mol1.GetBondBetweenAtoms(*atom_pair_G1).GetIdx())
+
+        for atom_pair_G2 in mapping.values():
+            G2_edges.append(mol2.GetBondBetweenAtoms(*atom_pair_G2).GetIdx())
+            
+        dopts = rdMolDraw2D.MolDrawOptions()
+        dopts.addAtomIndices = True
+        dopts.setHighlightColour((.53, .87, .53, 1))
+        dopts.noAtomLabels = True
+        #dopts.bondLineWidth = 2
+        dopts.clearBackground = False
+        dopts.scaleBondWidth = True  
+        dopts.scaleHighlightBondWidth = (True)
+
+        # in highlight bonds, highlight only the ones that are in the MCES struct derived from add_MCES_to_molgraphs
+        svg = MolsMatrixToGridImage(
+                            [[mol1, mol2]],
+                            drawOptions=dopts,
+                            subImgSize=(400,400),
+                            highlightBondListsMatrix=[[G1_edges, G2_edges]],
+                            useSVG=True,
+                            )
+
+        svg_all_white = svg.replace('<svg ', '<svg style="background-color: white;" ')
+        with open(f'testdata/mces_struct_{name}.svg', 'w') as out:
+            out.write(svg_all_white)
+
+
 
 def test_mapping_reader():
     # aufruf auf MCES
-    data = pd.read_csv("testdata/test_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=4)
-    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=4)
+    data = pd.read_csv("testdata/test_struct_smiles.csv", header=None, names=['index', 'smiles1', 'smiles2'], nrows=3)
+    reference = pd.read_csv("testdata/test_struct.csv", header=None, names=['i', 'dist', 't', 'mode', 'mapping', 'num_smiles1', 'num_smiles2'], keep_default_na=False, nrows=3)
 
     solver_options = {"timeLimit": 10, "msg": False}
 
@@ -146,6 +153,9 @@ def test_mapping_reader():
     for result, ref in zip(results, reference.itertuples(index=False)):
         _, _, _, _, mapping, n1, n2 = result
 
+        #test_draw_struct(n1, n2, mapping, str(i))
+
         assert mapping == ref.mapping
         assert n1 == ref.num_smiles1
         assert n2 == ref.num_smiles2
+

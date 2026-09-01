@@ -9,6 +9,7 @@ from scipy.special import binom
 import numpy as np
 from argparse import ArgumentParser
 from time import time
+from myopic_mces.myopic_mces import MCES
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -16,6 +17,8 @@ if __name__ == '__main__':
     parser.add_argument('--out', help='HDF5 file for combined results', required=True)
     parser.add_argument('--two_datasets_shape', help='Use this if the instances are from two different datasets (e.g., biomolecules versus target dataset), '
                         'specify their sizes: e.g., 19994 2000 if the target dataset contains 2000 compounds', nargs='+', type=int, default=None)
+    parser.add_argument('--sanity', type=int, default=None,
+                        help='if set, recompute this many random pairs and compare against the combined results as a sanity check')
     args = parser.parse_args()
 
     t0 = time()
@@ -56,8 +59,27 @@ if __name__ == '__main__':
         all_modes_order = all_modes_order.reshape(tuple(args.two_datasets_shape))
         
 
-    # TODO: sanity check, repeat and test some computations
-        
+    if (args.sanity is not None):
+        print(f'sanity check: recomputing {args.sanity} random pairs and comparing to combined results')
+        solver = computation_args.get('solver', 'COIN_CMD')
+        if isinstance(solver, bytes):
+            solver = solver.decode()
+        threshold = float(computation_args.get('threshold', 10.))
+        mces_flat = all_mces_order.reshape(-1)
+        modes_flat = all_modes_order.reshape(-1)
+        check_indices = np.random.choice(len(all_indices_order), size=min(args.sanity, len(all_indices_order)), replace=False)
+        nmismatches = 0
+        for idx in check_indices:
+            _, s1_i, s2_i = all_indices_order[idx]
+            smiles1 = smiles[s1_i].decode() if isinstance(smiles[s1_i], bytes) else smiles[s1_i]
+            smiles2 = smiles[s2_i].decode() if isinstance(smiles[s2_i], bytes) else smiles[s2_i]
+            _, distance, _, mode = MCES(smiles1, smiles2, threshold=threshold, solver=solver)
+            if not np.isclose(distance, mces_flat[idx]) or mode != modes_flat[idx]:
+                nmismatches += 1
+                print(f'sanity check MISMATCH at index {idx}: recomputed distance {distance} (mode {mode}), '
+                      f'stored distance {mces_flat[idx]} (mode {modes_flat[idx]})')
+        print(f'sanity check done: {nmismatches}/{len(check_indices)} mismatches')
+
     print('writing output to', args.out)
     with h5py.File(args.out, 'w') as f:
         g = f.create_group('computation_args')
