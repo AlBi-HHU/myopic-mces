@@ -10,8 +10,8 @@ import argparse
 import sys
 from myopic_mces.graph import construct_graph
 from myopic_mces.MCES_ILP import MCES_ILP
-from myopic_mces.filter_MCES import apply_filter, ComputationMode
-from myopic_mces.filter_MCES import apply_CPP_filter
+#from myopic_mces.filter_MCES import apply_filter, ComputationMode
+from myopic_mces.filter_MCES import apply_CPP_filter, ComputationMode
 
 def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,

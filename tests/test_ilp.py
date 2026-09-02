@@ -52,5 +52,3 @@ def test_COIN_CMD(s1, s2, thr, time_limit, status_exp, solution_exp):
     print(f'status {st}, solution {st_sol}')
     assert pulp.constants.LpStatus[status_exp] == pulp.constants.LpStatus[st]
     assert pulp.constants.LpSolution[solution_exp] == pulp.constants.LpSolution[st_sol]
-
-test_ILP_COIN_CMD()
