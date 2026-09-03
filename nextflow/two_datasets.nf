@@ -11,7 +11,7 @@
 
 include { PREPARE_INPUT_TWO; COMPUTE_BATCH; COMBINE_BATCHES; SANITY_CHECK; WRITE_TO_DB } from './modules'
 
-workflow {
+workflow TWO_DATASETS {
     if (!params.smiles_a || !params.smiles_b) {
         exit 1, "Provide --smiles_a <file.txt> and --smiles_b <file.txt>"
     }
@@ -41,4 +41,9 @@ workflow {
     if (params.write_to_db) {
         WRITE_TO_DB(combined_ch, 'hdf5_product')
     }
+}
+
+// default entry point when running this script directly
+workflow {
+    TWO_DATASETS()
 }

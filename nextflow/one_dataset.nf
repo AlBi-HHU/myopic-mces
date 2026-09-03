@@ -9,7 +9,7 @@
 
 include { PREPARE_INPUT_ONE; COMPUTE_BATCH; COMBINE_BATCHES; SANITY_CHECK; WRITE_TO_DB } from './modules'
 
-workflow {
+workflow ONE_DATASET {
     if (!params.smiles) {
         exit 1, "Provide --smiles <file.txt> (one SMILES per line)"
     }
@@ -37,4 +37,9 @@ workflow {
     if (params.write_to_db) {
         WRITE_TO_DB(combined_ch, 'hdf5_allvsall')
     }
+}
+
+// default entry point when running this script directly
+workflow {
+    ONE_DATASET()
 }

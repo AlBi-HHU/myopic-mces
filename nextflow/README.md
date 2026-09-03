@@ -12,6 +12,17 @@ write the computed distances back into the mces database.
 
 ## Usage
 
+`main.nf` at the repo root is the main entry point: it dispatches to
+`one_dataset` or `two_datasets` based on which `--smiles*` params are set, so
+`nextflow run .` works for either mode. It also lets you run the pipeline
+straight from GitHub, on any branch, without cloning:
+
+```bash
+nextflow run AlBi-HHU/myopic-mces -r <branch> --smiles smiles.txt
+```
+
+The individual workflow files below remain runnable directly, too.
+
 ```bash
 # one-dataset: all pairwise distances within one list
 nextflow run nextflow/one_dataset.nf --smiles smiles.txt
@@ -43,6 +54,7 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 | `use_db_lookup` | `false` | Reuse precomputed distances from mcesdb (needs PG env vars) |
 | `write_to_db` | `false` | Write computed distances back to mcesdb via `import-mces` (needs PG env vars) |
 | `cplex_home` | `null` | CPLEX install dir; when unset, falls back to `COIN_CMD` |
+| `solver_time_limit_seconds` | `null` | Per-instance ILP solver time limit; unset means no limit |
 | `choose_bound_dynamically` | `false` | Use a faster, potentially weaker lower bound when already above threshold |
 | `cpus` | `8` | Cores per `COMPUTE_BATCH` task. Set to your node's total core count to run one batch at a time, each using all cores. Lower values = more batches in parallel, fewer cores each. |
 | `sanity_check` | `true` | Run a random-sample sanity check after combining |
