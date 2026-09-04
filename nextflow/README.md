@@ -86,11 +86,12 @@ Requirements:
   full licensed engine. This re-runs on every task (cheap — a few seconds) since the container
   filesystem doesn't persist between tasks.
 - That patching writes into the container's own venv, which is read-only under Singularity/Apptainer
-  by default. `COMPUTE_BATCH` works around this with a per-task writable `--overlay` image (a small
-  ext3 filesystem file created fresh per task, not `--writable-tmpfs`, whose size is capped by the
-  cluster's `sessiondir max size` setting and is usually too small for this, and not a plain directory,
-  which only works as an overlay on unprivileged/rootless installs — most HPC clusters run Singularity
-  in setuid mode, where that's restricted to root).
+  by default. `COMPUTE_BATCH` works around this with a per-task writable `--overlay` image, built with
+  `singularity overlay create` right before the task runs (needed since a plain directory only works as
+  an overlay on unprivileged/rootless installs — most HPC clusters run Singularity in setuid mode, where
+  that's restricted to root — and a hand-formatted ext3 image is missing the internal `upper`/`work`
+  layout the runtime expects; `--writable-tmpfs` is out too, since its size is capped by the cluster's
+  `sessiondir max size` setting and that's usually too small for this).
 
 
 ## Database integration

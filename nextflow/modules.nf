@@ -67,12 +67,11 @@ process COMPUTE_BATCH {
     // with the rest of the task's work dir.
     // A plain directory as --overlay only works on unprivileged/rootless
     // Singularity/Apptainer installs; setuid installs (the common HPC setup)
-    // restrict that to root, so this uses a real ext3 overlay image instead
-    // (the traditional, universally-supported mechanism either way).
-    beforeScript params.cplex_home ? { """
-        truncate -s 512M ${task.workDir}/cplex_overlay.img
-        mkfs.ext3 -q -F ${task.workDir}/cplex_overlay.img
-    """ } : ''
+    // restrict that to root. A hand-formatted ext3 image doesn't work either
+    // — the runtime needs 'upper'/'work' dirs already inside it, which it
+    // won't create itself without root. `overlay create` builds an image
+    // with the right internal layout without needing any privilege.
+    beforeScript params.cplex_home ? { "singularity overlay create --size 512 --sparse ${task.workDir}/cplex_overlay.img" } : ''
     containerOptions params.cplex_home ? { "--bind ${params.cplex_home} --overlay ${task.workDir}/cplex_overlay.img" } : ''
 
     input:
