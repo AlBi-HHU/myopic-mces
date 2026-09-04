@@ -39,8 +39,8 @@ def construct_graph(s, save_mol=False, num_smiles=False):
         G.add_node(atom.GetIdx(),atom=atom.GetSymbol())    
     for bond in m.GetBonds():
         G.add_edge(bond.GetBeginAtom().GetIdx(),bond.GetEndAtom().GetIdx(),weight=bond.GetBondTypeAsDouble(),idx=bond.GetIdx())
-    if save_mol:
-        G.mol = m
+    
+    G.mol = m
     if num_smiles:
         # canonical false to keep atom map numbering
         G.num_smiles = Chem.MolToSmiles(m, canonical=False, allBondsExplicit=True)

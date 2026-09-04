@@ -1,27 +1,30 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
 [project]
 name = "myopic_mces"
 version = "1.3.2"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
 ]
 dependencies = [
-             "rdkit >= 2022.09.5",
+             "rdkit == 2024.09.1",
              "networkx >= 3.0",
              "pulp[cbc]>=2.7.0",
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
 ]
+
 [project.scripts]
 myopic_mces = "myopic_mces.myopic_mces:main"
+
 [project.urls]
 "Homepage" = "https://github.com/AlBi-HHU/myopic-mces"
 "Bug Tracker" = "https://github.com/AlBi-HHU/myopic-mces/issues"
@@ -42,7 +45,83 @@ dev = [
     "pandas>=2.0.3"
 ]
 
-[pytest]
-testpaths = [
-    "tests/"
-]
+[tool.scikit-build]
+cmake.source-dir = "src/cpp"
+wheel.packages = ["src/myopic_mces"]
+wheel.expand-macos-universal-tags = false
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*-musllinux_* pp*" # does not work with conda-forge Boost
+
+# this does not the test the repo, but the wheel after repairing
+# important to check if bindings are valid
+test-command = """
+python -c 'from rdkit import Chem; import mmces_filters; m=Chem.MolFromSmiles(\"CCO\"); print(type(m)); print(mmces_filters.filter2.__doc__); mmces_filters.filter2(m,m)' &&
+pytest -m 'not timelimit' -k 'not CPLEX_PY'
+"""
+test-sources = ["tests", "testdata"]
+test-groups = ["dev"]
+test-extras = ["cplex", "hdf5"]
+
+# this final part is claude
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+############################ CIBW LINUX
+
+[tool.cibuildwheel.linux]
+before-build = "bash {project}/ci/cibw_before_build_linux.sh"
+repair-wheel-command = """
+export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib/python${PYTAG}/site-packages/rdkit.libs:$LD_LIBRARY_PATH &&
+auditwheel show {wheel} &&
+auditwheel repair \
+  --exclude 'libRDKit*.so.*' \
+  --exclude 'libboost_python${PYTAG_NO_DOT}*.so.*' \
+  -w {dest_dir} \
+  {wheel}
+"""
+[tool.cibuildwheel.linux.environment]
+PYTAG = "$(python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')"
+CONDA_PREFIX = "/tmp/mm_env"
+CMAKE_PREFIX_PATH = "/tmp/mm_env"
+RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
+RDKIT_BUILD_INCLUDE_DIR = "/tmp/rdkit-build/Code"
+RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit.libs"
+CC = "/opt/rh/gcc-toolset-10/root/usr/bin/gcc"
+CXX = "/opt/rh/gcc-toolset-10/root/usr/bin/g++"
+
+############################ CIBW MACOS
+
+[tool.cibuildwheel.macos]
+before-build = "bash {project}/ci/cibw_before_build_macos.sh"
+repair-wheel-command = """
+DYLD_LIBRARY_PATH=/tmp/mm_env/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} {wheel}
+"""
+[tool.cibuildwheel.macos.environment]
+PYTAG = "$(python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')"
+CONDA_PREFIX = "/tmp/mm_env"
+CMAKE_PREFIX_PATH = "/tmp/mm_env"
+RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
+RDKIT_BUILD_INCLUDE_DIR = "/tmp/rdkit-build/Code"
+RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit.libs"
+CC = "clang"
+CXX = "clang++"
+
+############################ CIBW WINDOWS
+
+[tool.cibuildwheel.windows]
+before-build = "powershell {project}/ci/cibw_before_build_windows.ps1"
+repair-wheel-command = """
+delvewheel repair --add-path C:\\mm_env\\Library\\bin -w {dest_dir} {wheel}
+"""
+[tool.cibuildwheel.windows.environment]
+# backslash escaping on windows!!
+PYTAG        = "& python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
+CONDA_PREFIX = "C:\\mm_env"
+CMAKE_PREFIX_PATH = "C:\\mm_env"
+RDKIT_INCLUDE_DIR = "C:\\rdkit_src\\Code"
+RDKIT_BUILD_INCLUDE_DIR = "C:\\rdkit_build\\Code"
+RDKIT_LIB_DIR = "$EnvPath\\Lib\\site-packages\\rdkit.libs"
+CC = "msvc"
+CXX = "msvc"
