@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'pyproject.toml'
-      - 'src/cpp/CMakeLists.txt'
 
 jobs:
   # see cibuildwheel github for more
@@ -34,12 +33,12 @@ jobs:
       uses: pypa/cibuildwheel@v2.22.0
       with:
         package-dir: .
-        output-dir: wheelhouse
+        output-dir: wheels
 
     - uses: actions/upload-artifact@v4
       with:
         name: cibw-wheels-${{ matrix.os }}
-        path: ./wheelhouse/*.whl
+        path: ./wheels/*.whl
 
   upload_pypi:
     name: Publish package distributions to PyPI
