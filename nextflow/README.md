@@ -36,8 +36,8 @@ nextflow run nextflow/two_datasets.nf --smiles_a dataset_a.txt --smiles_b datase
 # write computed distances back to the mces database (needs PGHOST/PGDATABASE/... env vars)
 nextflow run nextflow/one_dataset.nf --smiles smiles.txt --write_to_db
 
-# with CPLEX
-nextflow run nextflow/one_dataset.nf --smiles smiles.txt --cplex_home /opt/ibm/ILOG/CPLEX_Studio
+# with CPLEX (needs a locally licensed CPLEX Optimization Studio install; see below)
+nextflow run nextflow/one_dataset.nf --smiles smiles.txt --cplex_home /opt/ibm/ILOG/CPLEX_Studio2211
 ```
 
 ## Parameters
@@ -53,7 +53,7 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 | `batch_size` | `224960000` | Number of instances per HDF5 batch |
 | `use_db_lookup` | `false` | Reuse precomputed distances from mcesdb (needs PG env vars) |
 | `write_to_db` | `false` | Write computed distances back to mcesdb via `import-mces` (needs PG env vars) |
-| `cplex_home` | `null` | CPLEX install dir; when unset, falls back to `COIN_CMD` |
+| `cplex_home` | `null` | CPLEX Optimization Studio install dir; when unset, falls back to the bundled `COIN_CMD` (CBC) solver. Must resolve to the same path on every node a task might run on — a path under your own home directory works, since that's shared cluster-wide. See "Using CPLEX" below. |
 | `solver_time_limit_seconds` | `null` | Per-instance ILP solver time limit; unset means no limit |
 | `choose_bound_dynamically` | `false` | Use a faster, potentially weaker lower bound when already above threshold |
 | `cpus` | `8` | Cores per `COMPUTE_BATCH` task. Set to your node's total core count to run one batch at a time, each using all cores. Lower values = more batches in parallel, fewer cores each. |
@@ -66,7 +66,31 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 - `combined.hdf5` — combined MCES distances (condensed `mces` for one-dataset
   mode, `(n_b, n_a)` matrix for two-dataset mode).
 - `sanity_report.txt` — `True`/`False` from the sanity check.
-- `db_import.log` — output of `import-mces` when `--write_to_db` is set.
+
+## Using CPLEX as ILP solver
+
+TL;DR: set `--cplex_home` to the location of your CPLEX Optimization Studio install, matching the
+version pinned in the `Dockerfile`.
+
+Setting `--cplex_home` switches `COMPUTE_BATCH` from the bundled CBC solver (`COIN_CMD`) to pulp's
+`CPLEX_PY` solver, which needs a locally licensed CPLEX Optimization Studio install ([free for
+Academia](https://academic.ibm.com/a2mt/downloads/data_science#/)).
+
+Requirements:
+- Build the image with the `cplex` extra (already the default in the `Dockerfile`) and make sure its
+  pinned `CPLEX_PY_VERSION` build arg matches your Studio installation's version exactly — `docplex
+  config --upgrade` (see below) refuses to run otherwise.
+- Pass `--cplex_home /path/to/CPLEX_Studio...`, pointing at your Studio install. That path is
+  bind-mounted into the container and used at the start of every `COMPUTE_BATCH` task to run
+  `docplex config --upgrade`, which patches the container's `cplex`/`docplex` packages to use the
+  full licensed engine. This re-runs on every task (cheap — a few seconds) since the container
+  filesystem doesn't persist between tasks.
+- That patching writes into the container's own venv, which is read-only under Singularity/Apptainer
+  by default. `COMPUTE_BATCH` works around this with a per-task writable overlay directory
+  (`--overlay`, backed by a plain directory under the task's own work dir — not `--writable-tmpfs`,
+  whose size is capped by the cluster's `sessiondir max size` setting and is usually too small for
+  this).
+
 
 ## Database integration
 

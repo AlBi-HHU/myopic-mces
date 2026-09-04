@@ -59,6 +59,15 @@ process COMPUTE_BATCH {
     cpus params.cpus
     stageInMode 'copy'   // copy input (myopic_mces modifies the hdf5 in place)
 
+    // `docplex config --upgrade` (below) patches files inside the container's
+    // own venv, which is otherwise read-only under Singularity/Apptainer. A
+    // writable overlay is needed for that; it must exist before the
+    // container starts, and it's per-task so parallel COMPUTE_BATCH tasks
+    // (maxForks) don't race on a shared one — Nextflow cleans it up along
+    // with the rest of the task's work dir.
+    beforeScript params.cplex_home ? { "mkdir -p ${task.workDir}/cplex_overlay" } : ''
+    containerOptions params.cplex_home ? { "--bind ${params.cplex_home} --overlay ${task.workDir}/cplex_overlay" } : ''
+
     input:
         path batch
 
@@ -66,12 +75,17 @@ process COMPUTE_BATCH {
         path batch
 
     script:
-        def cplex = params.cplex_home ? "PATH=${params.cplex_home}/bin/x86-64_linux/:\$PATH" : ''
         def solver = params.cplex_home ? params.solver : 'COIN_CMD'
+        def cplex_setup = params.cplex_home ? """
+        export CPLEX_HOME=${params.cplex_home}
+        export PATH=\$CPLEX_HOME/bin/x86-64_linux/:\$PATH
+        docplex config --upgrade \$CPLEX_HOME
+        """.stripIndent() : ''
         def dyn = params.choose_bound_dynamically ? '--choose_bound_dynamically' : ''
         def time_limit = params.solver_time_limit_seconds ? "--solver_time_limit_seconds ${params.solver_time_limit_seconds}" : ''
         """
-        ${cplex} myopic_mces \\
+        ${cplex_setup}
+        myopic_mces \\
             --hdf5_mode "${batch}" tmpout \\
             --threshold ${params.threshold} \\
             --solver ${solver} \\
