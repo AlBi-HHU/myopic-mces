@@ -65,8 +65,15 @@ process COMPUTE_BATCH {
     // container starts, and it's per-task so parallel COMPUTE_BATCH tasks
     // (maxForks) don't race on a shared one — Nextflow cleans it up along
     // with the rest of the task's work dir.
-    beforeScript params.cplex_home ? { "mkdir -p ${task.workDir}/cplex_overlay" } : ''
-    containerOptions params.cplex_home ? { "--bind ${params.cplex_home} --overlay ${task.workDir}/cplex_overlay" } : ''
+    // A plain directory as --overlay only works on unprivileged/rootless
+    // Singularity/Apptainer installs; setuid installs (the common HPC setup)
+    // restrict that to root, so this uses a real ext3 overlay image instead
+    // (the traditional, universally-supported mechanism either way).
+    beforeScript params.cplex_home ? { """
+        truncate -s 512M ${task.workDir}/cplex_overlay.img
+        mkfs.ext3 -q -F ${task.workDir}/cplex_overlay.img
+    """ } : ''
+    containerOptions params.cplex_home ? { "--bind ${params.cplex_home} --overlay ${task.workDir}/cplex_overlay.img" } : ''
 
     input:
         path batch
