@@ -99,7 +99,7 @@ repair-wheel-command = """
 DYLD_LIBRARY_PATH=/tmp/mm_env/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} {wheel}
 """
 [tool.cibuildwheel.macos.environment]
-PYTAG=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PYTAG="$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")"
 CONDA_PREFIX = "/tmp/mm_env"
 CMAKE_PREFIX_PATH = "/tmp/mm_env"
 RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
@@ -116,11 +116,11 @@ repair-wheel-command = """
 delvewheel repair --add-path C:\\mm_env\\Library\\bin -w {dest_dir} {wheel}
 """
 [tool.cibuildwheel.windows.environment]
-$PYTAG        = & python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+PYTAG        = & python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
 CONDA_PREFIX = "C:\\mm_env"
 CMAKE_PREFIX_PATH = "C:\\mm_env"
 RDKIT_INCLUDE_DIR = "C:\rdkit_src\Code"
 RDKIT_BUILD_INCLUDE_DIR = "C:\rdkit_build\Code"
 RDKIT_LIB_DIR = "$EnvPath\Lib\site-packages\rdkit.libs"
-CC = "clang"
-CXX = "clang++"
+CC = "msvc"
+CXX = "mscv"
