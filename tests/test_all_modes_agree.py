@@ -1,13 +1,16 @@
+import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import h5py
+import pytest
 
 from test_prepare_input import SMILES, _prepare
 from test_combine_batches import _compute_batches, _combine, _naive_lookup
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+pytestmark = pytest.mark.skipif(shutil.which('nextflow') is None, reason='nextflow not installed')
 
 
 def _run_nextflow(tmp_path, smiles_a, smiles_b):
@@ -20,8 +23,8 @@ def _run_nextflow(tmp_path, smiles_a, smiles_b):
         ['nextflow', '-c', str(REPO_ROOT / 'nextflow.config'),
          'run', str(REPO_ROOT / 'nextflow' / 'two_datasets.nf'),
          '--smiles_a', str(a_file), '--smiles_b', str(b_file),
-         '--batch_size', '13', '--out', str(out_dir)],
-        cwd=tmp_path, check=True, capture_output=True, text=True,
+         '--batch_size', '13', '--cpus', '2', '--out', str(out_dir)],
+        cwd=tmp_path, check=True,
     )
     return out_dir / 'combined.hdf5'
 
