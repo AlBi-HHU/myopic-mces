@@ -37,7 +37,8 @@ jobs:
         shell: micromamba-shell {0}
         run: |
           micromamba activate mm_test
-          pip wheel . -w wheelhouse/ --no-deps --no-build-isolation -C cmake.args="-DFAST_BUILD=ON"
+          mkdir -p wheels
+          pip wheel . -w wheels/ --no-deps --no-build-isolation -C cmake.args="-DFAST_BUILD=ON"
 
       # uv setup for testing
       - uses: astral-sh/setup-uv@v5
