@@ -34,7 +34,7 @@ workflow TWO_DATASETS {
 
     // 4. Sanity check
     if (params.sanity_check) {
-        SANITY_CHECK(combined_ch, file('nextflow/sanity_check.py'))
+        SANITY_CHECK(combined_ch, file("${projectDir}/sanity_check.py"))
     }
 
     // 5. Write computed distances back to the mces database
