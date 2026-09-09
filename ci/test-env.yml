@@ -13,3 +13,4 @@ dependencies:
   - conda-forge::libboost-python=1.84.0
   - librdkit-dev=2024.03.6
   - cibuildwheel=4.2.0
+  - scikit-build-core=1.0.3
