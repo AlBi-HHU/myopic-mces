@@ -15,13 +15,38 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
+      # micromamba setup for boost + rdkit headers
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: ci/test-env.yml
+          environment-name: mm_test
+          create-args: python=${{ matrix.python-version }}
+          cache-environment: true
+          cache-downloads: true
+        
+      - name: Cache fast wheel
+        id: cache-mm-wheel
+        uses: actions/cache@v4
+        with:
+          path: wheels/*.whl
+          key: fastwheel-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('src/cpp/**', 'pyproject.toml') }}
 
+      - name: Build fast wheel
+        if: steps.wheel-cache.outputs.cache-hit != 'true'
+        shell: micromamba-shell {0}
+        run: |
+          micromamba activate mm_test
+          pip wheel . -w wheelhouse/ --no-deps --no-build-isolation -C cmake.args="-DFAST_BUILD=ON"
+
+      # uv setup for testing
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      - run: uv sync --group dev
+      - run: uv sync --group dev --no-install-project
+      - run: uv pip install wheels/*.whl --no-deps
 
       - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
 

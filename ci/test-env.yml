@@ -1,0 +1,14 @@
+name: mm_test
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.12
+  - rdkit=2024.03.6
+  - libboost-devel=1.84.0
+  - compilers=1.11.0
+  - cmake=4.4.0
+  - boost-cpp=1.84.0
+  - eigen=5.0.1
+  - conda-forge::libboost-python=1.84.0
+  - librdkit-dev=2024.03.6
