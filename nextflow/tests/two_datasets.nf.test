@@ -16,6 +16,7 @@ nextflow_pipeline {
                 smiles_a = "$outputDir/smiles_a.txt"
                 smiles_b = "$outputDir/smiles_b.txt"
                 batch_size = 13
+                cpus = 2
                 sanity_check = true
                 sanity_samples = 20
                 out = "$outputDir"
