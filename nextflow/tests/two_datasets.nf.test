@@ -1,0 +1,31 @@
+nextflow_pipeline {
+
+    name "two_datasets end-to-end"
+    script "nextflow/two_datasets.nf"
+
+    test("combines batches and passes the built-in sanity check") {
+
+        setup {
+            def smiles = new File("$baseDir/example/example_data.csv").readLines()[0..11].collect { it.split(',')[1] }
+            new File("$outputDir/smiles_a.txt").text = smiles[0..6].join('\n') + '\n'
+            new File("$outputDir/smiles_b.txt").text = smiles[7..11].join('\n') + '\n'
+        }
+
+        when {
+            params {
+                smiles_a = "$outputDir/smiles_a.txt"
+                smiles_b = "$outputDir/smiles_b.txt"
+                batch_size = 13
+                sanity_check = true
+                sanity_samples = 20
+                out = "$outputDir"
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert path("${params.out}/combined.hdf5").exists()
+            assert path("${params.out}/sanity_report.txt").text.contains("True")
+        }
+    }
+}
