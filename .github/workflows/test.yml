@@ -46,10 +46,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      - run: uv sync --group dev --no-install-project
+      - run: uv sync --group dev --no-install-workspace
       - run: uv pip install --no-deps --find-links wheels/ myopic-mces
 
-      - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
+      - run: uv run --no-project pytest -m 'not timelimit' -k 'not CPLEX_PY'
 
       # - name: Setup tmate session
       #   if: ${{ failure() }}
