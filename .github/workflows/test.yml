@@ -46,7 +46,7 @@ jobs:
           enable-cache: true
 
       - run: uv sync --group dev --no-install-project
-      - run: uv pip install --no-deps --find-links wheels/ myopic_mces
+      - run: uv pip install --no-deps --find-links wheels/ wheels/
 
       - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
 
