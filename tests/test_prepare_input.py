@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 import pytest
 
+# just using the SMILES in column 1 in example_data.csv as SMILES list
 SMILES = [line.split(',')[1] for line in Path('example/example_data.csv').read_text().splitlines()[:12]]
 
 
@@ -42,6 +43,7 @@ def test_two_file_mode_order(tmp_path):
     batch_files = _prepare(tmp_path, smiles_a, smiles_b, batch_size=13)
     indices = _all_indices(batch_files)
     n_a = len(smiles_a)
+    # smiles_a index varies fastest, smiles_b index slowest
     i_arr = np.tile(np.arange(n_a), len(smiles_b))
     j_arr = np.repeat(np.arange(n_a, n_a + len(smiles_b)), n_a)
     expected = np.stack([i_arr, j_arr], axis=1)
