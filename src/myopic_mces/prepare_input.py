@@ -230,7 +230,7 @@ if __name__ == '__main__':
                   f'-> {nbatches} batches of {args.batch_size:_}')
 
             def unrank(k):
-                return k // n2, n1 + (k % n2)
+                return k % n1, n1 + (k // n1)
         # one input file
         else:
             smiles_input = [l.strip() for l in open(args.input_file).readlines()]
