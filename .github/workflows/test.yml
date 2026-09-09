@@ -44,6 +44,8 @@ jobs:
           python-version: "3.10"
           enable-cache: true
 
-      - run: uv sync --frozen --extra hdf5
+      - run: uv sync --frozen --extra hdf5 --group dev
 
       - run: uv run nf-test test --ci nextflow/tests/
+
+      - run: uv run pytest tests/test_all_modes_agree.py -v
