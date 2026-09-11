@@ -29,16 +29,25 @@ jobs:
         id: cache-mm-wheel
         uses: actions/cache@v4
         with:
-          path: wheels/*.whl
+          path: wheels/
           key: fastwheel-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('src/cpp/**', 'pyproject.toml') }}
 
       - name: Build fast wheel
-        if: steps.wheel-cache.outputs.cache-hit != 'true'
+        if: steps.cache-mm-wheel.outputs.cache-hit != 'true'
         shell: micromamba-shell {0}
         run: |
           micromamba activate mm_test
           mkdir -p wheels
-          pip wheel . -w wheels/ --no-deps --no-build-isolation -C cmake.args="-DFAST_BUILD=ON"
+
+          # paths to shared runtime libraries
+          export RDKIT_LIB_DIR=$(python -c "import os, rdkit; print(os.path.join(os.path.dirname(rdkit.__file__), '../rdkit.libs'))")
+          export RDKIT_INCLUDE_DIR="$CONDA_PREFIX/include/rdkit"
+          export RDKIT_BUILD_INCLUDE_DIR="$CONDA_PREFIX/include"
+
+          pip wheel . -w wheels/ --no-deps --no-build-isolation \
+            -C cmake.define.Python3_ROOT_DIR="$CONDA_PREFIX"
+            
+          ls -la wheels/
 
       # uv setup for testing
       - uses: astral-sh/setup-uv@v5
