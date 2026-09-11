@@ -37,7 +37,7 @@ PY
 )
 
 echo "$RDKit_DIR"
-ls -lh "$RDKit_DIR/../rdkit.libs"
+ls -lh "$RDKit_DIR/.dylibs"
 
 # Compiler: use Xcode command-line-tools clang (already on GH/GitLab macOS runners)
 export CC=clang
@@ -151,7 +151,7 @@ export RDKit_LIBRARY_DIR="$ENV_PATH/lib"
 cd /
 "$ENV_PATH/bin/python" -c 'import rdkit; print(rdkit.__version__); print(rdkit.__file__)'
 
-export RDKIT_LIB_DIR="$ENV_PATH/lib/python${PYTAG}/site-packages/rdkit.libs"
-export DYLD_LIBRARY_PATH="$ENV_PATH/lib/python${PYTAG}/site-packages/rdkit.libs:${DYLD_LIBRARY_PATH:-}"
+export RDKIT_LIB_DIR="$ENV_PATH/lib/python${PYTAG}/site-packages/rdkit/.dylibs"
+export DYLD_LIBRARY_PATH="$ENV_PATH/lib/python${PYTAG}/site-packages/rdkit/.dylibs:${DYLD_LIBRARY_PATH:-}"
 export PYTAG
 export PYTAG_NO_DOT

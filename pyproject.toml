@@ -104,7 +104,7 @@ CONDA_PREFIX = "/tmp/mm_env"
 CMAKE_PREFIX_PATH = "/tmp/mm_env"
 RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
 RDKIT_BUILD_INCLUDE_DIR = "/tmp/rdkit-build/Code"
-RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit.libs"
+RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs"
 CC = "clang"
 CXX = "clang++"
 
