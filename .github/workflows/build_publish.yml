@@ -1,11 +1,11 @@
 name: Build and publish to PyPI
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'pyproject.toml'
+on: push
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'pyproject.toml'
 
 jobs:
   # see cibuildwheel github for more
@@ -42,6 +42,7 @@ jobs:
 
   upload_pypi:
     name: Publish package distributions to PyPI
+    if: false
     needs: [build_wheels]
     runs-on: ubuntu-latest
     environment: pypi
