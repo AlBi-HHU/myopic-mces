@@ -27,7 +27,7 @@ export MAMBA_ROOT_PREFIX=/tmp/mamba_root
     "eigen"
 
 "$ENV_PATH/bin/python" -m pip install --upgrade pip
-"$ENV_PATH/bin/python" -m pip install "rdkit==2024.09.1"
+"$ENV_PATH/bin/python" -m pip install "rdkit==2025.3.4"
 
 RDKit_DIR=$("$ENV_PATH/bin/python" - <<'PY'
 import rdkit
@@ -50,7 +50,7 @@ cd /tmp
 rm -rf "$RDKIT_SOURCE_DIR"
 curl -L \
     -o rdkit.tar.gz \
-    https://github.com/rdkit/rdkit/archive/refs/tags/Release_2024_09_1.tar.gz
+    https://github.com/rdkit/rdkit/archive/refs/tags/Release_2025_03_4.tar.gz
 
 mkdir "$RDKIT_SOURCE_DIR"
 tar -xzf rdkit.tar.gz \
@@ -88,7 +88,7 @@ test -n "$BOOST_SONAME"
 # Try to pull a version-looking token out of the name; if RDKit's dylib
 # name doesn't embed a version (common on macOS/conda-forge), you'll need
 # to instead pin BOOST_VERSION manually here based on what conda-forge's
-# rdkit==2024.09.1 build actually depends on for boost.
+# rdkit==2025.3.4 build actually depends on for boost.
 BOOST_VERSION=$(echo "$BOOST_SONAME" |
     sed -n 's/.*-\([0-9]\+\.[0-9]\+\.[0-9]\+\)\.dylib$/\1/p')
 

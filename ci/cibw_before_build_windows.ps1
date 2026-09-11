@@ -20,7 +20,7 @@ $env:MAMBA_ROOT_PREFIX = "C:\mamba_root"
 & $Micromamba create -y -p $EnvPath -c conda-forge "python=$PYTAG" "eigen"
 
 & "$EnvPath\python.exe" -m pip install --upgrade pip
-& "$EnvPath\python.exe" -m pip install "rdkit==2024.09.1"
+& "$EnvPath\python.exe" -m pip install "rdkit==2025.3.4"
 
 $RDKitDir = & "$EnvPath\python.exe" -c "import rdkit; from pathlib import Path; print(Path(rdkit.__file__).parent)"
 Write-Host $RDKitDir
@@ -44,7 +44,7 @@ cl.exe 2>&1 | Select-String "Version"
 Set-Location "C:\"
 if (Test-Path $RdkitSourceDir) { Remove-Item -Recurse -Force $RdkitSourceDir }
 Invoke-WebRequest `
-    -Uri "https://github.com/rdkit/rdkit/archive/refs/tags/Release_2024_09_1.tar.gz" `
+    -Uri "https://github.com/rdkit/rdkit/archive/refs/tags/Release_2025_03_4.tar.gz" `
     -OutFile "C:\rdkit.tar.gz"
 
 New-Item -ItemType Directory -Path $RdkitSourceDir | Out-Null
@@ -68,7 +68,7 @@ if (-not $RDChem) { throw "rdchem*.pyd not found" }
 # the filename the way libboost_python*.so.X.Y.Z does on Linux, and
 # `dumpbin /dependents` (requires the VS dev shell, loaded above) just lists
 # DLL names, not versions. In practice it's more reliable to pin the Boost
-# version to match whatever conda-forge's rdkit==2024.09.1 build used, and
+# version to match whatever conda-forge's rdkit==2025.3.4 build used, and
 # verify against dumpbin output in CI logs rather than parsing it automatically.
 $DependentsOutput = & dumpbin /dependents $RDChem.FullName
 $BoostDllLine = $DependentsOutput | Select-String "boost_python" | Select-Object -First 1

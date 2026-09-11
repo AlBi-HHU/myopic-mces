@@ -19,7 +19,7 @@ export MAMBA_ROOT_PREFIX=/tmp/mamba_root
     "eigen" 
 
 "$ENV_PATH/bin/python" -m pip install --upgrade pip
-"$ENV_PATH/bin/python" -m pip install "rdkit==2024.09.1"
+"$ENV_PATH/bin/python" -m pip install "rdkit==2025.3.4"
 
 RDKit_DIR=$("$ENV_PATH/bin/python" - <<'PY'
 import rdkit
@@ -44,7 +44,7 @@ cd /tmp
 rm -rf "$RDKIT_SOURCE_DIR"
 curl -L \
     -o rdkit.tar.gz \
-    https://github.com/rdkit/rdkit/archive/refs/tags/Release_2024_09_1.tar.gz
+    https://github.com/rdkit/rdkit/archive/refs/tags/Release_2025_03_4.tar.gz
 
 mkdir "$RDKIT_SOURCE_DIR"
 tar -xzf rdkit.tar.gz \
