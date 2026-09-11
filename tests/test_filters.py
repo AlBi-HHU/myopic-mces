@@ -3,7 +3,8 @@ import pytest
 import pandas as pd
 
 from myopic_mces.graph import construct_graph
-from myopic_mces.filter_MCES import filter0, filter1, filter2
+#from myopic_mces.filter_MCES import filter0, filter1, filter2
+from mmces_filters import filter0, filter1, filter2
 from myopic_mces import MCES
 
 def test_filter0_tl():
@@ -13,8 +14,8 @@ def test_filter0_tl():
     df = smiles.merge(f0_data[['i', 'mces']], on='i')
     
     df['filter_distance'] = df.apply(
-        lambda row: filter0(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter0(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1
     )
     print(time.time() - start)
@@ -27,8 +28,8 @@ def test_filter1_tl():
     df = smiles.merge(f1_data[['i', 'mces']], on='i')
     
     df['filter_distance'] = df.apply(
-        lambda row: filter1(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter1(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1
     )
     print(time.time() - start)
@@ -42,8 +43,8 @@ def test_filter2_tl():
     df = smiles.merge(f2_data[['i', 'mces']], on='i')
     
     df['filter_distance'] = df.apply(
-        lambda row: filter2(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter2(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1)
     print(time.time() - start)
     assert (df['filter_distance'] == df['mces']).all()
@@ -54,18 +55,18 @@ def test_all_filters():
     smiles = pd.read_csv('testdata/test_smiles.csv', header=None, names=['i', 'smiles1', 'smiles2'])
     
     smiles['filter0_distance'] = smiles.apply(
-        lambda row: filter0(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter0(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1
     )
     smiles['filter1_distance'] = smiles.apply(
-        lambda row: filter1(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter1(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1
     )
     smiles['filter2_distance'] = smiles.apply(
-        lambda row: filter2(construct_graph(row.smiles1),
-                            construct_graph(row.smiles2)),
+        lambda row: filter2(construct_graph(row.smiles1).mol,
+                            construct_graph(row.smiles2).mol),
         axis=1
     )
     

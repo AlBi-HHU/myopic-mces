@@ -11,19 +11,54 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@v4
+      
+      # micromamba setup for boost + rdkit headers
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: ci/test-env.yml
+          environment-name: mm_test
+          create-args: python=${{ matrix.python-version }}
+          cache-environment: true
+          cache-downloads: true
+        
+      - name: Cache fast wheel
+        id: cache-mm-wheel
+        uses: actions/cache@v4
+        with:
+          path: wheels/
+          key: fastwheel-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('src/cpp/**', 'pyproject.toml') }}
 
+      - name: Build fast wheel
+        if: steps.cache-mm-wheel.outputs.cache-hit != 'true'
+        shell: micromamba-shell {0}
+        run: |
+          micromamba activate mm_test
+          mkdir -p wheels
+
+          # paths to shared runtime libraries
+          export RDKIT_LIB_DIR=$(python -c "import os, rdkit; print(os.path.join(os.path.dirname(rdkit.__file__), '../rdkit.libs'))")
+          export RDKIT_INCLUDE_DIR="$CONDA_PREFIX/include/rdkit"
+          export RDKIT_BUILD_INCLUDE_DIR="$CONDA_PREFIX/include"
+
+          pip wheel . -w wheels/ --no-deps --no-build-isolation \
+            -C cmake.define.Python3_ROOT_DIR="$CONDA_PREFIX"
+            
+          ls -la wheels/
+
+      # uv setup for testing
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      - run: uv sync --group dev
+      - run: uv sync --group dev --no-install-workspace
+      - run: uv pip install --no-deps --find-links wheels/ myopic-mces
 
-      - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
+      - run: uv run --no-project pytest -m 'not timelimit' -k 'not CPLEX_PY'
 
       # - name: Setup tmate session
       #   if: ${{ failure() }}

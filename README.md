@@ -15,15 +15,15 @@ input-file: `index,SMILES1,SMILES2`
 
 output-file: `index,myopic MCES distance,computation time in seconds,computation mode`
 
-The output file contains additional information if the MCES mapping for the structure and/or CXSMILES are computed:
+The output file contains additional information if the MCES mapping for the structure and/or numbered smiles are computed:
 
 output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping`
 
-output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping,cxsmiles1,cxsmiles2`
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping,numsmiles1,numsmiles2`
 
-output-file: `index,myopic MCES distance,computation time in seconds,computation mode,cxsmiles1,cxsmiles2`
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,numsmiles1,numsmiles2`
 
-If the MCES structure is computed, it is saved as a mapping. If the CXSMILES are saved as well, they contain the indexed smiles in which each atom is numbered. The structure mapping has the format `{(AtomID_SMILES1, AtomID_SMILES1): (AtomID_SMILES2, AtomID_SMILES2)}`, where the first AtomID pair is a bond in the molecule depicted by SMILES1 and the second pair is a bond in the molecule depicted by
+If the MCES structure is computed, it is saved as a mapping. If the numsmiles are saved as well, they contain the indexed smiles in which each atom is numbered. The structure mapping has the format `{(AtomID_SMILES1, AtomID_SMILES1): (AtomID_SMILES2, AtomID_SMILES2)}`, where the first AtomID pair is a bond in the molecule depicted by SMILES1 and the second pair is a bond in the molecule depicted by
 SMILES2.
 
 
