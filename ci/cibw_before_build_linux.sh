@@ -10,8 +10,16 @@ rm -rf "$ENV_PATH"
 
 RDKIT_SOURCE_DIR=/tmp/rdkit
 
+# Detect arch -> micromamba platform tag
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+    MAMBA_PLATFORM="linux-aarch64"
+else
+    MAMBA_PLATFORM="linux-64"
+fi
+
 # Setup conda env
-curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj bin/micromamba
+curl -Ls "https://micro.mamba.pm/api/micromamba/${MAMBA_PLATFORM}/latest" | tar -xj bin/micromamba
 export MAMBA_ROOT_PREFIX=/tmp/mamba_root
 
 ./bin/micromamba create -y -p "$ENV_PATH" -c conda-forge \
