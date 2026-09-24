@@ -89,6 +89,7 @@ process COMPUTE_BATCH {
         """.stripIndent() : ''
         def dyn = params.choose_bound_dynamically ? '--choose_bound_dynamically' : ''
         def time_limit = params.solver_time_limit_seconds ? "--solver_time_limit_seconds ${params.solver_time_limit_seconds}" : ''
+        def catch_errors = params.catch_computation_errors ? '--catch_computation_errors' : ''
         """
         ${cplex_setup}
         myopic_mces \\
@@ -99,7 +100,8 @@ process COMPUTE_BATCH {
             --solver_onethreaded \\
             --solver_no_msg \\
             ${dyn} \\
-            ${time_limit}
+            ${time_limit} \\
+            ${catch_errors}
         """
 }
 

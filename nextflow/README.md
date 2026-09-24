@@ -56,6 +56,7 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 | `cplex_home` | `null` | CPLEX Optimization Studio install dir; when unset, falls back to the bundled `COIN_CMD` (CBC) solver. Must resolve to the same path on every node a task might run on — a path under your own home directory works, since that's shared cluster-wide. See "Using CPLEX" below. |
 | `solver_time_limit_seconds` | `null` | Per-instance ILP solver time limit; unset means no limit |
 | `choose_bound_dynamically` | `false` | Use a faster, potentially weaker lower bound when already above threshold |
+| `catch_computation_errors` | `false` | Instances that fail to compute get distance `-1` instead of aborting the batch |
 | `cpus` | `8` | Cores per `COMPUTE_BATCH` task. Set to your node's total core count to run one batch at a time, each using all cores. Lower values = more batches in parallel, fewer cores each. |
 | `sanity_check` | `true` | Run a random-sample sanity check after combining |
 | `sanity_samples` | `10000` | Number of pairs to recompute in the sanity check |
