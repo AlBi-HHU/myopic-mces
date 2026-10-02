@@ -61,3 +61,6 @@ with h5py.File(combined_file, "r") as f:
 
 with open("sanity_report.txt", "w") as out:
     out.write(str(result) + "\n")
+
+if not result:
+    sys.exit(1)
