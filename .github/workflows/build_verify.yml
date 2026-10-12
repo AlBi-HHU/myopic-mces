@@ -34,7 +34,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: cibw-wheels-${{ matrix.os }}
+        name: cibw-wheels-${{ inputs.os }}
         path: ./wheels/*.whl
 
   check_wheel_validity:
