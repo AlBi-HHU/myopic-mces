@@ -106,19 +106,24 @@ echo "RDKit Boost version:"
 echo "  $BOOST_VERSION"
 
 # build matching Boost from source
+# download + bootstrap only once per job; the b2 build dir is kept as well, so
+# only Boost.Python is rebuilt for each further Python version
 BOOST_ROOT="/tmp/boost_${BOOST_VERSION}"
-rm -rf "$BOOST_ROOT"
-curl -L \
-    "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz" \
-    -o /tmp/boost.tar.gz
-mkdir "$BOOST_ROOT"
-tar -xzf /tmp/boost.tar.gz \
-    --strip-components=1 \
-    -C "$BOOST_ROOT"
+if [ ! -x "$BOOST_ROOT/b2" ]; then
+    rm -rf "$BOOST_ROOT"
+    curl -L \
+        "https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz" \
+        -o /tmp/boost.tar.gz
+    mkdir "$BOOST_ROOT"
+    tar -xzf /tmp/boost.tar.gz \
+        --strip-components=1 \
+        -C "$BOOST_ROOT"
+    cd "$BOOST_ROOT"
+    ./bootstrap.sh \
+        --prefix="$ENV_PATH" \
+        --with-libraries=python,serialization,iostreams,system
+fi
 cd "$BOOST_ROOT"
-./bootstrap.sh \
-    --prefix="$ENV_PATH" \
-    --with-libraries=python,serialization,iostreams,system
 
 # bootstrap.sh auto-detects Python headers as <python-prefix>/include/pythonX.Y,
 # which is wrong inside cibuildwheel's build venv (venvs don't ship headers,
@@ -128,7 +133,9 @@ PYTHON_LIBDIR=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIB
 sed -i.bak "/using python/d" project-config.jam
 echo "using python : ${PYTAG} : $(command -v python) : ${PYTHON_INCLUDE} : ${PYTHON_LIBDIR} ;" >> project-config.jam
 
+# -d0 silences the ~16k "common.copy" lines of the header install
 ./b2 \
+    -j"$(sysctl -n hw.ncpu)" -d0 \
     variant=release \
     link=shared \
     runtime-link=shared \
