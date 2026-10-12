@@ -1,0 +1,39 @@
+name: Publish to PyPI
+
+on: push
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'pyproject.toml'
+
+jobs:
+  per_os:
+    strategy:
+      fail_fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-vs2026-arm, macos-15-intel, macos-latest]
+    uses: ./.github/workflows/build_verify.yml
+    with:
+      os: ${{ matrix.os }}
+      pythons: '["3.10","3.11","3.12","3.13","3.14"]' 
+
+
+  # if all wheels have been built and are valid, upload to pypi
+  upload_pypi:
+    name: Publish package distributions to PyPI
+    if: false
+    needs: [per_os]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist 
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

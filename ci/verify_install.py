@@ -2,7 +2,7 @@ import subprocess, sys, tempfile, venv, glob, os, sysconfig
 from pathlib import Path
 
 wheels_dir = Path(sys.argv[1]).resolve()
-verify = Path(__file__).with_name("verify_wheel.py").resolve()
+verify = Path(__file__).with_name("verify_install.py").resolve()
 
 # get wheel that fits python version
 tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
