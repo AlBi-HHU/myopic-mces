@@ -7,6 +7,10 @@ Set-StrictMode -Version Latest
 $PYTAG        = & python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
 $PYTAG_NO_DOT = & python -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')"
 $EnvPath = "C:\mm_env"
+# unlink the Boost header junction first (see below), Remove-Item -Recurse
+# would otherwise follow it and delete the cached Boost install
+Get-ChildItem "$EnvPath\include" -Directory -Filter "boost-*" -ErrorAction SilentlyContinue |
+    ForEach-Object { cmd.exe /c rmdir "$($_.FullName)" }
 if (Test-Path $EnvPath) { Remove-Item -Recurse -Force $EnvPath }
 
 $RdkitSourceDir = "C:\rdkit-src"
@@ -105,53 +109,72 @@ $BoostVersion = "1.85.0"   # verify/pin against actual RDKit conda-forge build
 Write-Host "Using Boost version: $BoostVersion"
 
 # build matching Boost from source
+# Boost is independent of the Python version (only headers + cmake configs are
+# needed), so install it once into its own prefix and reuse it for all wheels
 Write-Host "----------- building boost from source"
-$BoostRoot = "C:\boost_$($BoostVersion -replace '\.','_')"
-if (Test-Path $BoostRoot) { Remove-Item -Recurse -Force $BoostRoot }
+$BoostPrefix = "C:\boost-install"
 $BoostUnderscored = $BoostVersion -replace '\.', '_'
+$BoostRoot = "C:\boost_$BoostUnderscored"
 
-Invoke-WebRequest `
-    -Uri "https://archives.boost.io/release/$BoostVersion/source/boost_$BoostUnderscored.zip" `
-    -OutFile "C:\boost.zip"
+if (Test-Path "$BoostPrefix\include\boost-*\boost\python.hpp") {
+    Write-Host "Boost already installed in $BoostPrefix, skipping"
+} else {
+    if (Test-Path $BoostRoot) { Remove-Item -Recurse -Force $BoostRoot }
 
-Expand-Archive -Path "C:\boost.zip" -DestinationPath "C:\boost_extract"
-Move-Item "C:\boost_extract\boost_$BoostUnderscored" $BoostRoot
+    # Expand-Archive on the zip takes ~30 min (tens of thousands of files),
+    # the bundled bsdtar extracts the tarball in a fraction of that
+    curl.exe -sSfL -o "C:\boost.tar.gz" `
+        "https://archives.boost.io/release/$BoostVersion/source/boost_$BoostUnderscored.tar.gz"
+    if ($LASTEXITCODE -ne 0) { throw "Boost download failed" }
+    tar -xzf "C:\boost.tar.gz" -C "C:\"
+    if ($LASTEXITCODE -ne 0) { throw "Boost extraction failed" }
 
-Set-Location $BoostRoot
+    Set-Location $BoostRoot
 
-Write-Host "cl.exe:"
-where.exe cl.exe
-Write-Host "VSINSTALLDIR: $env:VSINSTALLDIR"
-Write-Host "VCToolsInstallDir: $env:VCToolsInstallDir"
+    Write-Host "cl.exe:"
+    where.exe cl.exe
+    Write-Host "VSINSTALLDIR: $env:VSINSTALLDIR"
+    Write-Host "VCToolsInstallDir: $env:VCToolsInstallDir"
 
-$ShimDir = "C:\boost-shim"
-New-Item -ItemType Directory -Force $ShimDir | Out-Null
-"@echo off`r`ncl.exe %*" | Set-Content "$ShimDir\msvc.bat"
-$env:Path = "$ShimDir;$env:Path"
+    $ShimDir = "C:\boost-shim"
+    New-Item -ItemType Directory -Force $ShimDir | Out-Null
+    "@echo off`r`ncl.exe %*" | Set-Content "$ShimDir\msvc.bat"
+    $env:Path = "$ShimDir;$env:Path"
 
-Write-Host "----------- bootstrapping Boost"
-& .\bootstrap.bat vc143 `
-    --prefix="$EnvPath" `
-    --with-libraries=python,serialization,iostreams,system
-if (-not (Test-Path ".\b2.exe")) { throw "Boost bootstrap failed" }
+    Write-Host "----------- bootstrapping Boost"
+    & .\bootstrap.bat vc143 `
+        --prefix="$BoostPrefix" `
+        --with-libraries=python,serialization,iostreams,system
+    if (-not (Test-Path ".\b2.exe")) { throw "Boost bootstrap failed" }
 
-& .\b2.exe `
-    toolset=msvc address-model=64 variant=release link=shared runtime-link=shared `
-    --prefix="$EnvPath" `
-    -sPYTHON_INCLUDE="$EnvPath/include" `
-    -sPYTHON_LIB="$EnvPath/libs" `
-    --with-serialization --with-iostreams --with-system `
-    install
+    # -d0 silences the ~17k "common.copy" lines of the header install
+    & .\b2.exe `
+        -j $env:NUMBER_OF_PROCESSORS -d0 `
+        toolset=msvc address-model=64 variant=release link=shared runtime-link=shared `
+        --prefix="$BoostPrefix" `
+        --with-serialization --with-iostreams --with-system `
+        install
 
-Write-Host "=== Contents of boost_system-1.85.0 cmake dir ==="
-Get-ChildItem "$EnvPath\lib\cmake\boost_system-1.85.0" -Force
+    $toolsetFile = "$BoostPrefix\lib\cmake\BoostDetectToolset-1.85.0.cmake"
+    (Get-Content $toolsetFile) -replace `
+        '\(MSVC_VERSION GREATER 1929\) AND \(MSVC_VERSION LESS 1940\)', `
+        '(MSVC_VERSION GREATER 1929) AND (MSVC_VERSION LESS 1960)' |
+        Set-Content $toolsetFile
+    Write-Host "=== BoostDetectToolset content (after patch) ==="
+    Get-Content $toolsetFile | Select-String "vc143"
 
-$BoostIncludeDir = (Get-ChildItem "$EnvPath\include" -Directory -Filter "boost-*" | Select-Object -First 1).FullName
-if (-not $BoostIncludeDir) { throw "Boost versioned include dir not found" }
+    Set-Location "C:\"
+}
+
+# the wheel build expects the headers in the conda env (BOOST_INCLUDE_DIR in
+# pyproject.toml), which is recreated per Python version -> link them in
+$BoostCachedInclude = (Get-ChildItem "$BoostPrefix\include" -Directory -Filter "boost-*" | Select-Object -First 1)
+if (-not $BoostCachedInclude) { throw "Boost versioned include dir not found" }
+New-Item -ItemType Directory -Force "$EnvPath\include" | Out-Null
+$BoostIncludeDir = "$EnvPath\include\$($BoostCachedInclude.Name)"
+New-Item -ItemType Junction -Path $BoostIncludeDir -Target $BoostCachedInclude.FullName | Out-Null
 Write-Host "Boost include directory: $BoostIncludeDir"
 $env:BOOST_INCLUDE_DIR = $BoostIncludeDir
-
-Get-ChildItem "$EnvPath\lib" -Filter "*boost_system*"
 
 Write-Host "----------- building rdkit"
 
@@ -159,26 +182,11 @@ if (Test-Path "C:\rdkit-build") {
     Remove-Item -Recurse -Force "C:\rdkit-build"
 }
 
-$toolsetFile = "$EnvPath\lib\cmake\BoostDetectToolset-1.85.0.cmake"
-Write-Host "=== BoostDetectToolset content (before patch)==="
-Get-Content $toolsetFile | Select-String "vc143"
-
-(Get-Content $toolsetFile) -replace `
-    '\(MSVC_VERSION GREATER 1929\) AND \(MSVC_VERSION LESS 1940\)', `
-    '(MSVC_VERSION GREATER 1929) AND (MSVC_VERSION LESS 1960)' |
-    Set-Content $toolsetFile
-
-Write-Host "=== BoostDetectToolset content (after patch) ==="
-Get-Content $toolsetFile | Select-String "vc143"
-
-Write-Host "=== Boost grep ==="
-Get-Content "$EnvPath\lib\cmake\boost_system-1.85.0\boost_system-config.cmake" | Select-String "NOT_FOUND_MESSAGE|_BOOST_" -Context 2,2
-
 #-G "Ninja" `
 cmake -S "C:\rdkit-src" -B "C:\rdkit-build" `
-    -DCMAKE_PREFIX_PATH="$EnvPath" `
-    -DBoost_ROOT="$EnvPath" `
-    -DBOOST_ROOT="$EnvPath" `
+    -DCMAKE_PREFIX_PATH="$BoostPrefix;$EnvPath" `
+    -DBoost_ROOT="$BoostPrefix" `
+    -DBOOST_ROOT="$BoostPrefix" `
     -DEIGEN3_INCLUDE_DIR="$EnvPath\Library\include\eigen3" `
     -DEIGEN3_VERSION_OK=TRUE `
     -DBUILD_SHARED_LIBS=ON `
@@ -204,7 +212,7 @@ Write-Host "=== Boost headers ==="
 Test-Path "$BoostIncludeDir\boost*\python.hpp"
 
 Write-Host "=== Boost libraries ==="
-Get-ChildItem "$EnvPath\lib" -Recurse | Where-Object Name -match "boost" | Select-Object FullName
+Get-ChildItem "$BoostPrefix\lib" -Recurse | Where-Object Name -match "boost" | Select-Object FullName
 
 Set-Location "C:\"
 & "$EnvPath\python.exe" -c "import rdkit; print(rdkit.__version__); print(rdkit.__file__)"
