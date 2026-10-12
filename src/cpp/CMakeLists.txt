@@ -26,6 +26,13 @@ if(UNIX AND NOT APPLE)
     )
 endif()
 
+if(APPLE)
+    set_target_properties(mmces_filters PROPERTIES
+        BUILD_RPATH "@loader_path/rdkit/.dylibs"
+        INSTALL_RPATH "@loader_path/rdkit/.dylibs"
+    )
+endif()
+
 if(WIN32)
     set_target_properties(mmces_filters PROPERTIES SUFFIX ".pyd")
 elseif(APPLE)
