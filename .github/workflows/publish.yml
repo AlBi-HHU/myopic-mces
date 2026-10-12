@@ -10,7 +10,7 @@ on: push
 jobs:
   per_os:
     strategy:
-      fail_fast: false
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-vs2026-arm, macos-15-intel, macos-latest]
     uses: ./.github/workflows/build_verify.yml
