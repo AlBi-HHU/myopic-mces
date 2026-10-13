@@ -95,8 +95,9 @@ LD_LIBRARY_PATH = "/tmp/mm_env/lib:/tmp/mm_env/lib/python${PYTAG}/site-packages/
 [tool.cibuildwheel.macos]
 before-build = "bash {project}/ci/cibw_before_build_macos.sh"
 repair-wheel-command = """
-export DYLD_LIBRARY_PATH=/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs:/tmp/mm_env/lib &&
+export DYLD_LIBRARY_PATH=/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs &&
 delocate-wheel --require-archs {delocate_archs} \
+  --ignore-missing-dependencies \
   --exclude libRDKit \
   --exclude libboost_python \
   -w {dest_dir} {wheel}

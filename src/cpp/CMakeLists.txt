@@ -103,5 +103,31 @@ target_link_libraries(mmces_filters PRIVATE
     "${RDKIT_RDGENERAL_LIBRARY}"
 )
 
+# RDKit's macOS dylibs have absolute install names (/DLC/rdkit/.dylibs/...), so
+# the linker records that path; rewrite them to @rpath so the INSTALL_RPATH
+# above finds the dylibs of the installed rdkit package
+if(APPLE)
+    foreach(lib IN ITEMS
+            "${RDKIT_DATASTRUCTS_LIBRARY}"
+            "${RDKIT_GRAPHMOL_LIBRARY}"
+            "${RDKIT_SMILESPARSE_LIBRARY}"
+            "${RDKIT_RDGENERAL_LIBRARY}")
+        execute_process(
+            COMMAND otool -D "${lib}"
+            OUTPUT_VARIABLE lib_id_out
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY
+        )
+        # otool -D prints "<file>:" followed by the install name
+        string(REGEX REPLACE "^[^\n]*\n" "" lib_id "${lib_id_out}")
+        get_filename_component(lib_name "${lib_id}" NAME)
+        message(STATUS "Install name ${lib_id} -> @rpath/${lib_name}")
+        add_custom_command(TARGET mmces_filters POST_BUILD
+            COMMAND install_name_tool -change "${lib_id}" "@rpath/${lib_name}"
+                    "$<TARGET_FILE:mmces_filters>"
+        )
+    endforeach()
+endif()
+
 # makes sure compiled .so file is in correct place for python wheel
 install(TARGETS mmces_filters DESTINATION .)

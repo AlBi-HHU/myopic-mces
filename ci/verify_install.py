@@ -20,5 +20,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # install exactly this wheel
     subprocess.run([str(py), "-m", "pip", "install", str(wheel)], check=True)
 
+    # import the extension on its own first, it has to find RDKit's libraries
+    # without rdkit being imported (and its libraries loaded) beforehand
+    subprocess.run([str(py), "-c", "import mmces_filters"], check=True, cwd=tmp)
+
     # run wheel in external tempfile to check
     subprocess.run([str(py), str(smoke_test)], check=True, cwd=tmp)
