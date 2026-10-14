@@ -22,15 +22,6 @@ classifiers = [
 
 dependencies = ["rdkit == 2025.3.4"]
 
-[project.optional-dependencies]
-cplex = [
-    "cplex>=22.1.1.2",
-    "docplex>=2.32.264",
-]
-hdf5 = [
-    "h5py>=3.0",
-]
-
 [dependency-groups]
 dev = [
     "pytest>=8.3.5"
@@ -39,7 +30,6 @@ dev = [
 [tool.scikit-build]
 # here, src is the cpp/src folder
 cmake.source-dir = "src"
-wheel.packages = ["src"]
 wheel.expand-macos-universal-tags = false
 
 [tool.cibuildwheel]
@@ -52,7 +42,6 @@ skip = "*-musllinux_*" # does not work with conda-forge Boost
 test-command = "python {project}/tests/test_import_smoke.py"
 test-sources = ["tests"]
 test-groups = ["dev"]
-test-extras = ["cplex", "hdf5"]
 
 # this final part is claude
 manylinux-x86_64-image = "manylinux_2_28"

@@ -8,6 +8,7 @@ on: push
   #     - 'pyproject.toml'
 
 # TODO: make sure that pure python is published first
+# TODO: make sure that packages are actually built first
 jobs:
   per_os:
     strategy:
