@@ -29,7 +29,7 @@ dev = [
 
 [tool.scikit-build]
 # here, src is the cpp/src folder
-cmake.source-dir = "src"
+cmake.source-dir = "cpp/src"
 wheel.expand-macos-universal-tags = false
 
 [tool.cibuildwheel]
@@ -39,7 +39,7 @@ skip = "*-musllinux_*" # does not work with conda-forge Boost
 # this does not the test the repo, but the wheel after repairing
 # important to check if bindings are valid
 # and it also checks if there are duplicate library dependencies present
-test-command = "python {project}/tests/test_import_smoke.py"
+test-command = "python {project}/cpp/tests/test_import_smoke.py"
 test-sources = ["tests"]
 test-groups = ["dev"]
 
@@ -50,8 +50,7 @@ manylinux-aarch64-image = "manylinux_2_28"
 ############################ CIBW LINUX
 
 [tool.cibuildwheel.linux]
-before-build = "pwd && ls -la /project /project/ci && bash /project/ci/cibw_before_build_linux.sh"
-#before-build = "bash {project}/ci/cibw_before_build_linux.sh"
+before-build = "bash {project}/cpp/ci/cibw_before_build_linux.sh"
 repair-wheel-command = """
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib/python${PYTAG}/site-packages/rdkit.libs:$LD_LIBRARY_PATH &&
 auditwheel show {wheel} &&
@@ -75,7 +74,7 @@ LD_LIBRARY_PATH = "/tmp/mm_env/lib:/tmp/mm_env/lib/python${PYTAG}/site-packages/
 ############################ CIBW MACOS
 
 [tool.cibuildwheel.macos]
-before-build = "bash {project}/ci/cibw_before_build_macos.sh"
+before-build = "bash {project}/cpp/ci/cibw_before_build_macos.sh"
 repair-wheel-command = """
 export DYLD_LIBRARY_PATH=/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs &&
 delocate-wheel --require-archs {delocate_archs} \
@@ -99,11 +98,11 @@ CXX = "clang++"
 
 [tool.cibuildwheel.windows]
 archs = ["auto64"]
-before-build = "powershell {project}/ci/cibw_before_build_windows.ps1"
+before-build = "powershell {project}/cpp/ci/cibw_before_build_windows.ps1"
 #repair-wheel-command = """
 #delvewheel repair --add-path C:/mm_env/Lib/site-packages/rdkit.libs;C:/mm_env/Library/bin -w {dest_dir} {wheel}
 #"""
-repair-wheel-command = "python {project}/ci/repair_windows.py {wheel} {dest_dir}"
+repair-wheel-command = "python {project}/cpp/ci/repair_windows.py {wheel} {dest_dir}"
 [tool.cibuildwheel.windows.environment]
 PYTAG = "& python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
 CONDA_PREFIX = "C:/mm_env"
