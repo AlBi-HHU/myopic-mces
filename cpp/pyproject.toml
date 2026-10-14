@@ -29,7 +29,8 @@ dev = [
 
 [tool.scikit-build]
 # here, src is the cpp/src folder
-cmake.source-dir = "cpp/src"
+cmake.source-dir = "src"
+wheel.packages = []
 wheel.expand-macos-universal-tags = false
 
 [tool.cibuildwheel]
