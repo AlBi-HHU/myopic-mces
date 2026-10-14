@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish C++ variants to PyPI
 
 on: push
   # push:
@@ -7,6 +7,7 @@ on: push
   #   paths:
   #     - 'pyproject.toml'
 
+# TODO: make sure that pure python is published first
 jobs:
   per_os:
     strategy:

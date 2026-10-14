@@ -1,6 +1,9 @@
 from rdkit import Chem
 import rdkit
+import pytest
 import mmces_filters
+
+#mmces_filters = pytest.importorskip("mmces_filters")
 
 mol1 = Chem.MolFromSmiles("CCO")
 mol2 = Chem.MolFromSmiles("CCC")

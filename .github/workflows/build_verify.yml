@@ -1,4 +1,4 @@
-name: Build and verify per OS
+name: Build and verify c++ variants per OS
 
 # this workflow is called from the publish workflow 
 # builds and verifies each OS and python combination separately
@@ -28,7 +28,7 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v4.2.1
       with:
-        package-dir: .
+        package-dir: cpp
         output-dir: wheels
 
     - name: Upload artifact
@@ -38,7 +38,7 @@ jobs:
         path: ./wheels/*.whl
 
   check_wheel_validity:
-    name: Test ${{ inputs.os }} wheel validity in isolated environment
+    name: Test ${{ inputs.os }} (py ${{ matrix.python }}) wheel validity in isolated env
     runs-on: ${{ inputs.os }}
     needs: [build_wheel]
     strategy:
