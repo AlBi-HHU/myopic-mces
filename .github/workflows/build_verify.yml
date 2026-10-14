@@ -64,4 +64,4 @@ jobs:
         path: wheels
 
     - name: Install and verify
-      run: python ci/verify_install.py wheels tests/test_import_smoke.py
+      run: python cpp/ci/verify_install.py wheels cpp/tests/test_import_smoke.py
