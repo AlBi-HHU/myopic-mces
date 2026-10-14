@@ -50,7 +50,8 @@ manylinux-aarch64-image = "manylinux_2_28"
 ############################ CIBW LINUX
 
 [tool.cibuildwheel.linux]
-before-build = "bash {project}/ci/cibw_before_build_linux.sh"
+before-build = "pwd && ls -la /project /project/ci && bash /project/ci/cibw_before_build_linux.sh"
+#before-build = "bash {project}/ci/cibw_before_build_linux.sh"
 repair-wheel-command = """
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib/python${PYTAG}/site-packages/rdkit.libs:$LD_LIBRARY_PATH &&
 auditwheel show {wheel} &&
