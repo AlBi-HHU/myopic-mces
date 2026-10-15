@@ -1,6 +1,6 @@
-name: Build and verify c++ variants per OS
+name: Build and verify C++ variants per OS
 
-# this workflow is called from the publish workflow 
+# this workflow is called from the publish_cpp workflow 
 # builds and verifies each OS and python combination separately
 on: 
   workflow_call:

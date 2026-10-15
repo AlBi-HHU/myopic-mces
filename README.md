@@ -125,7 +125,7 @@ Experimental options for myopic MCES distance computation
 
 ## Recommended settings
 
-To speed up computations and save space, use variant of the package implemented in C++ (install via `pip install myopic_mces[cpp]`), the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
+To speed up computations and save space, use the variant of the package implemented in C++ (install via `pip install myopic_mces[cpp]`), the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
 ```bash
 PATH=$CPLEX_HOME/bin/x86-64_linux/:$PATH python -m myopic_mces.myopic_mces --threshold 10 --solver CPLEX_CMD --solver_onethreaded --solver_no_msg --hdf5_mode input-file.hdf5
 ```
