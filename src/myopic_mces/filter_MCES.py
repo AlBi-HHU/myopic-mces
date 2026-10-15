@@ -10,6 +10,22 @@ from typing import DefaultDict
 import numpy as np
 from enum import Enum
 import rdkit
+import os
+
+def get_loaded_so_files():
+    loaded_so = set()
+    with open(f"/proc/{os.getpid()}/maps", "r") as f:
+        for line in f:
+            parts = line.strip().split()
+            # The mapped path is the last element if present
+            if len(parts) >= 6:
+                path = parts[-1]
+                if ".so" in path and path.startswith("/"):
+                    loaded_so.add(path)
+    return sorted(loaded_so)
+
+for so in get_loaded_so_files():
+    print(so)
 
 try: 
     import mmces_filters as mf
