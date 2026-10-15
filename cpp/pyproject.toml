@@ -20,11 +20,14 @@ classifiers = [
         "Operating System :: Microsoft :: Windows",
 ]
 
-dependencies = ["rdkit == 2025.3.4"]
+dependencies = [
+    "rdkit == 2025.3.4"
+    ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3.5"
+    "pytest>=8.3.5",
+    "cibuildwheel>=2.23.4"
 ]
 
 [tool.scikit-build]

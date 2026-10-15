@@ -21,9 +21,7 @@ dependencies = [
              "networkx >= 3.0",
              "pulp[cbc]>=2.7.0,<=3.3.2",
              "scipy >= 1.10.1",
-             "joblib >= 1.2.0",
-             "pandas>=2.3.3",
-             "cibuildwheel>=2.23.4",
+             "joblib >= 1.2.0"
 ]
 
 [project.scripts]
@@ -46,7 +44,8 @@ cpp = ["myopic-mces-cpp"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3.5"
+    "pytest>=8.3.5",
+    "pandas>=2.3.3"
 ]
 [tool.uv.sources]
 myopic-mces-cpp = { path = "cpp" }
