@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 # remember to change the pure python pyproject.toml as well!
 # file: src/pyproject.toml
 [project]
-name = "myopic-mces-cpp"
+name = "myopic_mces_cpp"
 version = "1.3.2"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
