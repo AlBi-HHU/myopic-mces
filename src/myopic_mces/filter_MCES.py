@@ -9,9 +9,9 @@ import networkx as nx
 from typing import DefaultDict
 import numpy as np
 from enum import Enum
+import rdkit
 
 try: 
-    import rdkit
     import mmces_filters as mf
     HAS_CPP = True
 except ImportError as e:
