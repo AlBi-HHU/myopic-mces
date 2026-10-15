@@ -1,0 +1,24 @@
+name: mm_test
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.12
+  - compilers=1.11.0
+  - cmake=4.4.0
+  - eigen=5.0.1
+  - conda-forge::libboost-python=1.86.0
+  - librdkit-dev=2025.3.4
+  - cibuildwheel=4.2.0
+  - pytest=9.1.1
+  - pip=26.1.2
+  - pip:
+      - cbcbox==2.935
+      - cloudpickle==3.1.2
+      - joblib==1.6.0
+      - networkx==3.6.1
+      - pathspec==1.1.1
+      - pulp==3.3.2
+      - rdkit==2025.3.4
+      - scikit-build-core==1.0.3
+      - scipy==1.18.1

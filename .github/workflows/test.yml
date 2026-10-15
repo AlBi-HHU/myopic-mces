@@ -23,7 +23,7 @@ jobs:
 
       - run: uv sync --group dev
 
-      - run: uv run pytest -m 'not timelimit' -k 'not CPLEX_PY'
+      - run: uv run pytest tests/ -m 'not timelimit' -k 'not CPLEX_PY'
 
       # - name: Setup tmate session
       #   if: ${{ failure() }}

@@ -1,0 +1,102 @@
+name: Build and publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+
+jobs:
+  version_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Version & Dependency Sync (Pure Bash)
+        run: |
+          # check package versions for package and cpp extension
+          V1=$(sed -nE 's/^version[[:space:]]*=[[:space:]]*["'\'']([^"'\'']+)["'\''].*/\1/p' pyproject.toml)
+          V2=$(sed -nE 's/^version[[:space:]]*=[[:space:]]*["'\'']([^"'\'']+)["'\''].*/\1/p' cpp/pyproject.toml)
+
+          # extract cpp dependency version
+          V3=$(sed -nE 's/.*myopic_mces_cpp[>==]+([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/p' pyproject.toml)
+
+          echo "myopic_mces (python package):      $V1"
+          echo "myopic_mces_cpp (c++ extension):   $V2"
+          echo "myopic_mces_cpp (dependency):      $V3"
+
+          # check if all values were extracted successfully
+          if [ -z "$V1" ] || [ -z "$V2" ] || [ -z "$V3" ]; then
+            echo "::error::Unable to extract all values from the pyproject.tomls!"
+            exit 1
+          fi
+
+          # match all 3 versions
+          if [ "$V1" != "$V2" ] || [ "$V1" != "$V3" ]; then
+            echo "::error::Version Mismatch! $V1 (python package) != $V2 (c++ extension) != $V3 (c++ dependency)"
+            exit 1
+          fi
+
+          echo "All three version synched, moving on"
+
+  per_os:
+    needs: [version_check]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+    uses: ./.github/workflows/build_verify.yml
+    with:
+      os: ${{ matrix.os }}
+      pythons: '["3.10","3.11","3.12","3.13","3.14"]' 
+
+
+  # if all wheels have been built and are valid, upload to pypi
+  upload_cpp_pypi:
+    name: Publish C++ extension to PyPI
+    if: false
+    needs: [per_os]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist 
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # TODO: this could break if the C++ upload is not fast enough
+  upload_pure_py_pypi:
+    needs: [upload_cpp_pypi]
+    name: Build and publish Python distributions to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install build/upload packages
+        run: |
+          python -m pip install --upgrade build twine
+
+      - name: Build
+        run: |
+          python -m build
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+

@@ -1,0 +1,67 @@
+name: Build and verify C++ variants per OS
+
+# this workflow is called from the publish_cpp workflow 
+# builds and verifies each OS and python combination separately
+on: 
+  workflow_call:
+    inputs:
+      os: { required: true, type: string }
+      pythons: { required: true, type: string }
+
+jobs:
+  build_wheel:
+    name: Build wheels on ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    strategy:
+      fail-fast: true           # TODO: for now, while debugging
+
+    steps:
+    - name: Checkout repository code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+        cache: "pip"
+
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v4.2.1
+      with:
+        package-dir: cpp
+        output-dir: wheels
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cibw-wheels-${{ inputs.os }}
+        path: ./wheels/*.whl
+
+  check_wheel_validity:
+    name: Test ${{ inputs.os }} (py ${{ matrix.python }}) wheel validity in isolated env
+    runs-on: ${{ inputs.os }}
+    needs: [build_wheel]
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJSON(inputs.pythons) }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          ci
+          cpp/tests/test_import_smoke.py
+        sparse-checkout-cone-mode: false
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python }}
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: cibw-wheels-${{ inputs.os }}
+        path: wheels
+
+    - name: Install and verify
+      run: python cpp/ci/verify_install.py wheels cpp/tests/test_import_smoke.py

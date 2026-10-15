@@ -39,7 +39,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
         for j in G2.nodes:
             if G1.nodes[i]["atom"]==G2.nodes[j]["atom"]:
                 nodepairs.append(tuple([i,j]))
-    y=ILP.add_variable_dicts('nodepairs', nodepairs,
+    y=pulp.LpVariable.dicts('nodepairs', nodepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)
@@ -59,7 +59,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
     for j in G2.edges:
         edgepairs.append(tuple([-1,j]))
         w[tuple([-1,j])]=G2[j[0]][j[1]]["weight"]
-    c=ILP.add_variable_dicts('edgepairs', edgepairs,
+    c=pulp.LpVariable.dicts('edgepairs', edgepairs,
                             lowBound = 0,
                             upBound = 1,
                             cat = pulp.LpInteger)

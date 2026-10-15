@@ -1,0 +1,118 @@
+[build-system]
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
+# remember to change the pure python pyproject.toml as well!
+# file: src/pyproject.toml
+[project]
+name = "myopic_mces_cpp"
+version = "1.3.2"
+description = "A package for computation of the myopic MCES distance"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+        "Programming Language :: Python :: 3",
+        "Programming Language :: C++",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS",
+        "Operating System :: Microsoft :: Windows",
+]
+
+dependencies = [
+    "rdkit == 2025.3.4"
+    ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "cibuildwheel>=2.23.4"
+]
+
+[tool.scikit-build]
+# here, src is the cpp/src folder
+cmake.source-dir = "src"
+wheel.packages = []
+wheel.expand-macos-universal-tags = false
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*-musllinux_*" # does not work with conda-forge Boost
+
+# this does not the test the repo, but the wheel after repairing
+# important to check if bindings are valid
+# and it also checks if there are duplicate library dependencies present
+test-command = "python {project}/cpp/tests/test_import_smoke.py"
+test-sources = ["tests"]
+test-groups = ["dev"]
+
+# this final part is claude
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+############################ CIBW LINUX
+
+[tool.cibuildwheel.linux]
+before-build = "bash {project}/cpp/ci/cibw_before_build_linux.sh"
+repair-wheel-command = """
+export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib/python${PYTAG}/site-packages/rdkit.libs:$LD_LIBRARY_PATH &&
+auditwheel show {wheel} &&
+auditwheel repair \
+  --exclude 'libRDKit*' \
+  --exclude '*boost_python*' \
+  -w {dest_dir} \
+  {wheel}
+"""
+[tool.cibuildwheel.linux.environment]
+PYTAG = "$(python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')"
+CONDA_PREFIX = "/tmp/mm_env"
+CMAKE_PREFIX_PATH = "/tmp/mm_env"
+RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
+RDKIT_BUILD_INCLUDE_DIR = "/tmp/rdkit-build/Code"
+RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit.libs"
+CC = "/opt/rh/gcc-toolset-10/root/usr/bin/gcc"
+CXX = "/opt/rh/gcc-toolset-10/root/usr/bin/g++"
+LD_LIBRARY_PATH = "/tmp/mm_env/lib:/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit.libs:/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/libs:$LD_LIBRARY_PATH"
+
+############################ CIBW MACOS
+
+[tool.cibuildwheel.macos]
+before-build = "bash {project}/cpp/ci/cibw_before_build_macos.sh"
+repair-wheel-command = """
+export DYLD_LIBRARY_PATH=/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs &&
+delocate-wheel --require-archs {delocate_archs} \
+  --ignore-missing-dependencies \
+  --exclude libRDKit \
+  --exclude libboost_python \
+  -w {dest_dir} {wheel}
+"""
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "11.0"
+PYTAG = "$(python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')"
+CONDA_PREFIX = "/tmp/mm_env"
+CMAKE_PREFIX_PATH = "/tmp/mm_env"
+RDKIT_INCLUDE_DIR = "/tmp/rdkit/Code"
+RDKIT_BUILD_INCLUDE_DIR = "/tmp/rdkit-build/Code"
+RDKIT_LIB_DIR = "/tmp/mm_env/lib/python${PYTAG}/site-packages/rdkit/.dylibs"
+CC = "clang"
+CXX = "clang++"
+
+############################ CIBW WINDOWS
+
+[tool.cibuildwheel.windows]
+archs = ["auto64"]
+before-build = "powershell {project}/cpp/ci/cibw_before_build_windows.ps1"
+#repair-wheel-command = """
+#delvewheel repair --add-path C:/mm_env/Lib/site-packages/rdkit.libs;C:/mm_env/Library/bin -w {dest_dir} {wheel}
+#"""
+repair-wheel-command = "python {project}/cpp/ci/repair_windows.py {wheel} {dest_dir}"
+[tool.cibuildwheel.windows.environment]
+PYTAG = "& python -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
+CONDA_PREFIX = "C:/mm_env"
+CMAKE_PREFIX_PATH = "C:/mm_env"
+RDKIT_INCLUDE_DIR = "C:/rdkit-src/Code"
+RDKIT_BUILD_INCLUDE_DIR = "C:/rdkit-src/Code"
+RDKIT_LIB_DIR = "C:/mm_env/Lib/site-packages/rdkit.libs"
+# this is hartcoded, fix if boost version of rdkit changes (so if rdkit version changes)
+BOOST_INCLUDE_DIR = "C:/mm_env/include/boost-1_85"

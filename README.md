@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml/badge.svg)](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml)
 [![PyPI version](https://img.shields.io/pypi/v/myopic-mces)](https://pypi.org/project/myopic-mces/)
-[![Python version](https://img.shields.io/badge/python-%3E%3D3.8-blue)](https://www.python.org/)
+[![Python version](https://img.shields.io/badge/python%3E%3D3.10-blue)](https://www.python.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41467--024--55462--w-blue)](https://doi.org/10.1038/s41467-024-55462-w)
 
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
@@ -15,17 +15,16 @@ input-file: `index,SMILES1,SMILES2`
 
 output-file: `index,myopic MCES distance,computation time in seconds,computation mode`
 
-The output file contains additional information if the MCES mapping for the structure and/or CXSMILES are computed:
+The output file contains additional information if the MCES mapping for the structure and/or numbered smiles are computed:
 
 output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping`
 
-output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping,cxsmiles1,cxsmiles2`
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,mapping,numsmiles1,numsmiles2`
 
-output-file: `index,myopic MCES distance,computation time in seconds,computation mode,cxsmiles1,cxsmiles2`
+output-file: `index,myopic MCES distance,computation time in seconds,computation mode,numsmiles1,numsmiles2`
 
-If the MCES structure is computed, it is saved as a mapping. If the CXSMILES are saved as well, they contain the indexed smiles in which each atom is numbered. The structure mapping has the format `{(AtomID_SMILES1, AtomID_SMILES1): (AtomID_SMILES2, AtomID_SMILES2)}`, where the first AtomID pair is a bond in the molecule depicted by SMILES1 and the second pair is a bond in the molecule depicted by
+If the MCES structure is computed, it is saved as a mapping. If the numsmiles are saved as well, they contain the indexed smiles in which each atom is numbered. The structure mapping has the format `{(AtomID_SMILES1, AtomID_SMILES1): (AtomID_SMILES2, AtomID_SMILES2)}`, where the first AtomID pair is a bond in the molecule depicted by SMILES1 and the second pair is a bond in the molecule depicted by
 SMILES2.
-
 
 Download via pip and execute:
 ```bash
@@ -126,7 +125,7 @@ Experimental options for myopic MCES distance computation
 
 ## Recommended settings
 
-To speed up computations and save space, use the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
+To speed up computations and save space, use the variant of the package implemented in C++ (install via `pip install myopic_mces[cpp]`), the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
 ```bash
 PATH=$CPLEX_HOME/bin/x86-64_linux/:$PATH python -m myopic_mces.myopic_mces --threshold 10 --solver CPLEX_CMD --solver_onethreaded --solver_no_msg --hdf5_mode input-file.hdf5
 ```
@@ -155,6 +154,7 @@ Optional extras enable additional functionality:
 ```bash
 pip install myopic_mces[hdf5]   # for HDF5 mode
 pip install myopic_mces[cplex]  # for newer versions of the CPLEX solver
+pip install myopic_mces[cpp]    # for the fast filter implementation
 ```
 
 Dependencies can also be installed via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
