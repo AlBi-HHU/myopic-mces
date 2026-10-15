@@ -1,4 +1,5 @@
 import rdkit # has to be loaded before cpp filters are
+from rdkit import Chem, Geometry
 
 try: 
     import mmces_filters
