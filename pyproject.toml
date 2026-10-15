@@ -40,7 +40,7 @@ cplex = [
 hdf5 = [
     "h5py>=3.0",
 ]
-cpp = ["myopic-mces-cpp"]
+cpp = ["myopic_mces_cpp"]
 
 [dependency-groups]
 dev = [
