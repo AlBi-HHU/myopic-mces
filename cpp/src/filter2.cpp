@@ -3,10 +3,10 @@
  */
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <algorithm>
 #include <cmath>
 #include <GraphMol/ROMol.h>
+#include "atom_types.h"
 #include "Hungarian.h"
 #include "filter2.h"
 
@@ -30,17 +30,7 @@ struct MolInfo {
     vector<vector<int>> atomsByType;    // atom indices per element id
 };
 
-double getWeightedBondDegree(const Bond* bond){
-    switch (bond->getBondType()) {
-        case Bond::SINGLE:   return 1.0;
-        case Bond::DOUBLE:   return 2.0;
-        case Bond::TRIPLE:   return 3.0;
-        case Bond::AROMATIC: return 1.5;
-        default:             return 0.0;
-    }
-}
-
-MolInfo buildMolInfo(const ROMol* mol, unordered_map<string, int>& typeIds){
+MolInfo buildMolInfo(const ROMol* mol, AtomTypeIds& typeIds){
     MolInfo info;
     const unsigned int n = mol->getNumAtoms();
     info.type.resize(n);
@@ -48,8 +38,7 @@ MolInfo buildMolInfo(const ROMol* mol, unordered_map<string, int>& typeIds){
     info.nbStart.resize(n + 1);
     for (const auto atom : mol->atoms()) {
         // element ids are shared between both molecules of a comparison
-        auto it = typeIds.emplace(atom->getSymbol(), typeIds.size()).first;
-        info.type[atom->getIdx()] = it->second;
+        info.type[atom->getIdx()] = typeIds.get(atom);
     }
     info.atomsByType.resize(typeIds.size());
     for (unsigned int i = 0; i < n; i++) info.atomsByType[info.type[i]].push_back(i);
@@ -92,7 +81,7 @@ double minEdgeMappingCost(const MolInfo& m1, int atom1, const MolInfo& m2, int a
 } // namespace
 
 double applyFilter2(ROMol* mol1, ROMol* mol2){
-    unordered_map<string, int> typeIds;
+    AtomTypeIds typeIds;
     MolInfo m1 = buildMolInfo(mol1, typeIds);
     MolInfo m2 = buildMolInfo(mol2, typeIds);
     m1.atomsByType.resize(typeIds.size());
@@ -100,7 +89,7 @@ double applyFilter2(ROMol* mol1, ROMol* mol2){
     double difference = 0.0;
     vector<double> costMatrix;
     vector<int> assignment;
-    for (size_t t = 0; t < typeIds.size(); t++) {
+    for (int t = 0; t < typeIds.size(); t++) {
         const vector<int>& atoms1 = m1.atomsByType[t];
         const vector<int>& atoms2 = m2.atomsByType[t];
         const int n1 = atoms1.size(), n2 = atoms2.size();
