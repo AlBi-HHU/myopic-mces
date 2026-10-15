@@ -7,7 +7,7 @@
 #include <cmath>
 #include <GraphMol/ROMol.h>
 #include "atom_types.h"
-#include "Hungarian.h"
+#include "LAPJV.h"
 #include "filter2.h"
 
 using namespace std;
@@ -121,7 +121,7 @@ double applyFilter2(ROMol* mol1, ROMol* mol2){
                 costMatrix[i * n + j] = c;
             }
         }
-        difference += solveAssignment(costMatrix, n, assignment);
+        difference += solveAssignmentLAPJV(costMatrix, n, assignment);
     }
     return difference / 2;
 }
