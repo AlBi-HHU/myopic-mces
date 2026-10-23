@@ -14,7 +14,8 @@ from myopic_mces.filter_MCES import apply_filter, ComputationMode
 
 def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
-         catch_errors=False, structure=False, num_smiles=False):
+         catch_errors=False, structure=False, num_smiles=False,
+         stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
     """
     Calculates the distance between two molecules
 
@@ -41,6 +42,13 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
         if true, also use an additional weak (molecular formula-based) filter
     catch_errors : bool
          if true, return distance -1 when errors are encountered
+    stereo : bool
+         if true, compute stereochemistry-aware distance (penalties for mapping tetrahedral centres and double
+         bonds with different configurations), see `MCES_ILP.construct_ILP`
+    stereo_cost : float
+         penalty for mapping elements with different known stereochemistry
+    stereo_unknown_cost : float
+         penalty for mapping elements where stereochemistry is known for only one of them
 
     Returns:
     -------
@@ -60,8 +68,8 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
     """
     start = time.time()
     # construct graph for both smiles. if we want to calculate the MCES structure mapping, we need save_mol
-    G1 = construct_graph(smiles1, save_mol=structure, num_smiles=num_smiles)
-    G2 = construct_graph(smiles2, save_mol=structure, num_smiles=num_smiles)
+    G1 = construct_graph(smiles1, save_mol=structure, num_smiles=num_smiles, stereo=stereo)
+    G2 = construct_graph(smiles2, save_mol=structure, num_smiles=num_smiles, stereo=stereo)
     if num_smiles:
         num_smiles1 = G1.num_smiles
         num_smiles2 = G2.num_smiles
@@ -94,10 +102,12 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
     try:
         if not structure:
             distance, compute_mode = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
-                                            no_ilp_threshold=no_ilp_threshold, structure=structure)
+                                            no_ilp_threshold=no_ilp_threshold, structure=structure,
+                                            stereo=stereo, stereo_cost=stereo_cost, stereo_unknown_cost=stereo_unknown_cost)
         elif structure:
             distance, compute_mode, mapping = MCES_ILP(G1, G2, threshold, solver, solver_options=solver_options,
-                                            no_ilp_threshold=no_ilp_threshold, structure=structure)
+                                            no_ilp_threshold=no_ilp_threshold, structure=structure,
+                                            stereo=stereo, stereo_cost=stereo_cost, stereo_unknown_cost=stereo_unknown_cost)
             
     except Exception as e:
         print('ERROR:', smiles1, smiles2, 'exact', e, file=sys.stderr)
@@ -239,6 +249,9 @@ def main():
                         'to the output for each input SMILES')
     parser.add_argument('--structure', action='store_true', help='(experimental) if set, saves a mapping of the pairwise MCES structure ' \
                         'to the output. Only works for molecules for which the MCES distance has been proven exact by the ILP.')
+    parser.add_argument('--stereo', action='store_true', help='stereochemistry-aware MCES: mapping tetrahedral centres or '
+                        'double bonds with different configurations is penalized (0.5 each, 0.25 if stereochemistry '
+                        'is specified for only one of the two molecules)')
     args = parser.parse_args()
 
     if args.output is None and not args.hdf5_mode:
@@ -254,7 +267,8 @@ def main():
                                    use_bound_zero=args.use_bound_zero,
                                    catch_errors=args.catch_computation_errors,
                                    num_smiles=args.num_smiles,
-                                   structure=args.structure)
+                                   structure=args.structure,
+                                   stereo=args.stereo)
     
     # TODO: disclaimer that mapping does not work with hdf5 format yet
     if (args.solver != 'CPLEX_PY' and args.solver_time_limit_seconds is not None):
