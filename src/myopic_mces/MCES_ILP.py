@@ -9,8 +9,123 @@ import networkx as nx
 from myopic_mces.filter_MCES import ComputationMode
 import math
 import re
+from itertools import combinations, permutations
 
-def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
+def permutation_parity(perm):
+    """0 for even, 1 for odd permutations of range(len(perm))"""
+    perm, swaps = list(perm), 0
+    for i in range(len(perm)):
+        while perm[i] != i:
+            j = perm[i]
+            perm[i], perm[j] = perm[j], perm[i]
+            swaps += 1
+    return swaps % 2
+
+
+def same_chirality(n1, tag1, n2, tag2, mapping):
+    """
+     Whether two tetrahedral centres have the same configuration under a (partial) mapping of their neighbours
+
+     n1, n2: neighbours (4, incl. placeholders for implicit H) in the order the chiral tags refer to
+     mapping: dict from 3 neighbours in n1 to neighbours in n2, the remaining neighbours are paired up
+    """
+    rest = [x for x in n2 if x not in mapping.values()][0]
+    perm = [n2.index(mapping.get(x, rest)) for x in n1]
+    return (tag1 == tag2) == (permutation_parity(perm) == 0)
+
+
+def ez_trans(ez, i, a, b):
+    """
+     Whether substituent a (bonded to double bond atom i) and substituent b (bonded to the other double bond atom)
+     are trans, for a double bond with stereo info `ez` (see construct_graph)
+    """
+    begin, end, sa, sb, trans = ez
+    if i != begin:
+        a, b = b, a
+    return trans ^ (a != sa) ^ (b != sb)
+
+
+def stereo_terms(ILP, G1, G2, y, stereo_cost, stereo_unknown_cost):
+    """
+     Adds stereo penalty variables and constraints to the ILP, returns the objective terms.
+
+     A tetrahedral centre pair i->k is penalized if at least 3 substituents are mapped onto substituents and
+     the permutation parity of the mapping does not match the chiral tags; a double bond pair if one substituent
+     on each side is mapped and the cis/trans relation differs. If stereo is specified only for one of the two,
+     stereo_unknown_cost is charged once the geometry is defined (>= 3 resp. 1+1 mapped substituents).
+
+     Note: the resulting distance satisfies the triangle inequality only if stereo_unknown_cost >= stereo_cost / 2
+    """
+    terms = []
+
+    def add_penalty(name, cost, lower_bounds):
+        # penalty variable q >= each lower bound, only added if needed
+        if len(lower_bounds) > 0:
+            q = ILP.add_variable(name, lowBound=0)
+            for lb in lower_bounds:
+                ILP.addConstraint(q >= lb)
+            terms.append(cost * q)
+
+    # tetrahedral centres
+    for i, k in y:
+        t1, t2 = G1.nodes[i].get("chiral_tag"), G2.nodes[k].get("chiral_tag")
+        if t1 is None and t2 is None:
+            continue
+        cost = stereo_cost if (t1 is not None and t2 is not None) else stereo_unknown_cost
+        n1, n2 = list(G1.neighbors(i)), list(G2.neighbors(k))
+        if cost == 0 or len(n1) < 3 or len(n2) < 3:
+            continue
+        lower_bounds = []
+        for T in combinations(n1, 3):
+            if t1 is not None and t2 is not None:
+                if len(G1.nodes[i]["chiral_nbrs"]) != 4 or len(G2.nodes[k]["chiral_nbrs"]) != 4:
+                    break
+                for img in permutations(n2, 3):
+                    pairs = list(zip(T, img))
+                    if all(p in y for p in pairs) and not same_chirality(
+                            G1.nodes[i]["chiral_nbrs"], t1, G2.nodes[k]["chiral_nbrs"], t2, dict(pairs)):
+                        lower_bounds.append(y[(i, k)] + pulp.lpSum(y[p] for p in pairs) - 3)
+            else:
+                # only one centre is specified: penalize once the geometry is defined
+                mapped = [y[(a, b)] for a in T for b in n2 if (a, b) in y]
+                if len(mapped) > 0:
+                    lower_bounds.append(y[(i, k)] + pulp.lpSum(mapped) - 3)
+        add_penalty(f"stereoatom_{i}_{k}", cost, lower_bounds)
+    # double bonds
+    for e1 in G1.edges:
+        if G1.edges[e1]["weight"] != 2:
+            continue
+        for e2 in G2.edges:
+            if G2.edges[e2]["weight"] != 2:
+                continue
+            z1, z2 = G1.edges[e1].get("ez"), G2.edges[e2].get("ez")
+            if z1 is None and z2 is None:
+                continue
+            cost = stereo_cost if (z1 is not None and z2 is not None) else stereo_unknown_cost
+            if cost == 0:
+                continue
+            lower_bounds = []
+            k, l = e2
+            for i, j in (e1, e1[::-1]):
+                if (i, k) not in y or (j, l) not in y:
+                    continue
+                for a in G1.neighbors(i):
+                    for b in G1.neighbors(j):
+                        if a in (i, j) or b in (i, j) or a == b:
+                            continue
+                        for a2 in G2.neighbors(k):
+                            for b2 in G2.neighbors(l):
+                                if a2 in (k, l) or b2 in (k, l) or a2 == b2 or (a, a2) not in y or (b, b2) not in y:
+                                    continue
+                                if z1 is not None and z2 is not None and \
+                                        ez_trans(z1, i, a, b) == ez_trans(z2, k, a2, b2):
+                                    continue
+                                lower_bounds.append(y[(i, k)] + y[(j, l)] + y[(a, a2)] + y[(b, b2)] - 3)
+            add_penalty(f"stereobond_{e1[0]}_{e1[1]}_{e2[0]}_{e2[1]}", cost, lower_bounds)
+    return terms
+
+
+def construct_ILP(G1, G2, threshold, no_ilp_threshold=False, stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
     """
      Constructs the ILP for calculating the exact distance between two molecules
 
@@ -24,6 +139,17 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
          Threshold for the comparison. Exact distance is only calculated if the distance is lower than the threshold.
      no_ilp_threshold: bool
          if true, always return exact distance even if it is below the threshold (slower)
+     stereo: bool
+         if true, add penalties for mapping tetrahedral centres and double bonds with different stereochemistry.
+         The geometry is compared under the mapping (permutation parity of the mapped neighbours, cis/trans relation
+         of mapped substituents), and only charged once enough substituents are mapped (3 for centres, 1 on each side
+         for double bonds), see `stereo_terms`.
+         Graphs have to be constructed with `construct_graph(..., stereo=True)`.
+         As all penalties are non-negative, the non-stereo distance is a lower bound.
+     stereo_cost: float
+         penalty for mapping two elements with different known stereochemistry
+     stereo_unknown_cost: float
+         penalty for mapping two elements where stereochemistry is known for only one of them
 
      Returns:
      -------
@@ -66,7 +192,11 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
 
 
     #objective function
-    ILP += pulp.lpSum([ w[i]*c[i] for i in edgepairs])
+    objective=[ w[i]*c[i] for i in edgepairs]
+    #penalty for mapping stereo centres / double bonds with different configurations
+    if stereo:
+        objective += stereo_terms(ILP, G1, G2, y, stereo_cost, stereo_unknown_cost)
+    ILP += pulp.lpSum(objective)
 
 
 
@@ -141,12 +271,13 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
 
     #constraint for the threshold
     if threshold!=-1 and not no_ilp_threshold:
-        ILP +=pulp.lpSum([ w[i]*c[i] for i in edgepairs])<=threshold
+        ILP +=pulp.lpSum(objective)<=threshold
 
     return ILP
 
 
-def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False, structure=False):
+def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False, structure=False,
+             stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
     """
      Calculates the exact distance between two molecules using an ILP
 
@@ -166,6 +297,8 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
          if true, always return exact distance even if it is below the threshold (slower)
      structure: bool
          if true, calculate pairwise MCES structures
+     stereo, stereo_cost, stereo_unknown_cost:
+         stereo-aware distance, see `construct_ILP`
 
      Returns:
      -------
@@ -182,7 +315,8 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
 
     """
 
-    ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold)
+    ILP = construct_ILP(G1, G2, threshold=threshold, no_ilp_threshold=no_ilp_threshold,
+                        stereo=stereo, stereo_cost=stereo_cost, stereo_unknown_cost=stereo_unknown_cost)
 
     # if structure is set, only calculate it if the returned mode is exact
     def result(dist, mode):
