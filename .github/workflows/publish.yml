@@ -1,19 +1,27 @@
 name: Build and publish
 
-on: push
-    # branches:
-    #   - main
-    # paths:
-    #   - 'pyproject.toml'
+# publishes both packages with the same version:
+#   1. myopic_mces_cpp (C++ extension, platform wheels built via build_verify.yml)
+#   2. myopic_mces     (pure python, depends on myopic_mces_cpp via the "cpp" extra)
+# the C++ extension has to be uploaded first, so that the extra can be resolved
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
 
 jobs:
   version_check:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Check Version & Dependency Sync (Pure Bash)
+        id: check
         run: |
           # check package versions for package and cpp extension
           V1=$(sed -nE 's/^version[[:space:]]*=[[:space:]]*["'\'']([^"'\'']+)["'\''].*/\1/p' pyproject.toml)
@@ -40,6 +48,17 @@ jobs:
 
           echo "All three version synched, moving on"
 
+          # releases on PyPI cannot be overwritten, so fail early if the version was not bumped
+          for PKG in myopic_mces myopic_mces_cpp; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/$PKG/$V1/json")
+            if [ "$STATUS" = "200" ]; then
+              echo "::error::$PKG $V1 already exists on PyPI, bump the version first!"
+              exit 1
+            fi
+          done
+
+          echo "version=$V1" >> "$GITHUB_OUTPUT"
+
   per_os:
     needs: [version_check]
     strategy:
@@ -49,7 +68,7 @@ jobs:
     uses: ./.github/workflows/build_verify.yml
     with:
       os: ${{ matrix.os }}
-      pythons: '["3.10","3.11","3.12","3.13","3.14"]' 
+      pythons: '["3.10","3.11","3.12","3.13","3.14"]'
 
 
   # if all wheels have been built and are valid, upload to pypi
@@ -65,31 +84,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: cibw-*
-          path: dist 
+          path: dist
           merge-multiple: true
 
       - uses: pypa/gh-action-pypi-publish@release/v1
 
-  # TODO: this could break if the C++ upload is not fast enough
   upload_pure_py_pypi:
+    name: Publish pure Python package to PyPI
     needs: [upload_cpp_pypi]
-    name: Build and publish Python distributions to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install build/upload packages
+      - name: Install build package
         run: |
-          python -m pip install --upgrade build twine
+          python -m pip install --upgrade build
 
       - name: Build
         run: |
@@ -97,4 +116,3 @@ jobs:
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-

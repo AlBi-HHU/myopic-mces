@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.10"]
 build-backend = "scikit_build_core.build"
 
 # remember to change the pure python pyproject.toml as well!
-# file: src/pyproject.toml
+# file: pyproject.toml (repo root)
 [project]
 name = "myopic_mces_cpp"
 version = "1.3.2"
