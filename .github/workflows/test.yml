@@ -23,7 +23,7 @@ jobs:
 
       - run: uv sync --group dev
 
-      - run: uv run pytest tests/ -m 'not timelimit' -k 'not CPLEX_PY'
+      - run: uv run pytest tests/ -m 'not timelimit and not cpp' -k 'not CPLEX_PY'
 
       # - name: Setup tmate session
       #   if: ${{ failure() }}
@@ -35,3 +35,32 @@ jobs:
         with:
           name: failed-test-structure
           path: "testdata/mces_struct_*.svg"
+
+  # same tests, but with the c++ extension installed (`cpp` extra)
+  # builds a single wheel the same way as for publishing (see publish.yml)
+  test-cpp:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build C++ extension wheel
+        uses: pypa/cibuildwheel@v4.2.1
+        env:
+          CIBW_BUILD: cp310-manylinux_x86_64
+        with:
+          package-dir: cpp
+          output-dir: wheels
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.10"
+          enable-cache: true
+
+      - run: uv sync --group dev
+
+      - name: Install C++ extension wheel
+        run: uv pip install wheels/*.whl
+
+      # --no-sync, otherwise uv would remove the wheel again
+      - run: uv run --no-sync pytest tests/ -m 'not timelimit' -k 'not CPLEX_PY'
