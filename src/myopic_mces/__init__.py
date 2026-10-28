@@ -1,14 +1,10 @@
 import rdkit # has to be loaded before cpp filters are
 from rdkit import Chem, Geometry
 
-try: 
-    import mmces_filters
-    HAS_CPP = True
-except ImportError as e:
-    mmces_filters = None
-    HAS_CPP = False
+from ._cpp import mmces_filters, HAS_CPP, CPP_IMPORT_ERROR
+if not HAS_CPP:
     import warnings
-    warnings.warn(f'C++ filters not available: {e}')
+    warnings.warn(f'C++ filters not available: {CPP_IMPORT_ERROR}')
 
 from .myopic_mces import MCES
 from .MCES_ILP import MCES_ILP

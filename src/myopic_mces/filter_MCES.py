@@ -12,13 +12,7 @@ from enum import Enum
 import rdkit
 import os
 
-try: 
-    import mmces_filters as mf
-    HAS_CPP = True
-except ImportError as e:
-    HAS_CPP = False
-    mmces_filters = None
-    _cpp_import_error = e
+from ._cpp import mmces_filters as mf, HAS_CPP, CPP_IMPORT_ERROR
 
 # TODO: if additional options such as node_limit are added in the future, add dedicated computation mode
 class ComputationMode(Enum):
@@ -305,8 +299,8 @@ def apply_CPP_filter(G1, G2, threshold,always_stronger_bound=True,use_bound_zero
      same as the other one just cpp filters
     """
     if not HAS_CPP: # this is basically a safety net underneath a safety net
-        raise ImportError(f'C++ filters not available ({_cpp_import_error}). '
-                          'Install with: pip install myopic_mces[cpp]')
+        raise ImportError(f'C++ filters not available ({CPP_IMPORT_ERROR}). '
+                          'Install with: pip install "myopic_mces[cpp]"')
 
     if always_stronger_bound:
             d=mf.filter2(G1.mol,G2.mol)
