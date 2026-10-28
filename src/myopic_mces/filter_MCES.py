@@ -301,6 +301,8 @@ def apply_CPP_filter(G1, G2, threshold,always_stronger_bound=True,use_bound_zero
     if not HAS_CPP: # this is basically a safety net underneath a safety net
         raise ImportError(f'C++ filters not available ({CPP_IMPORT_ERROR}). '
                           'Install with: pip install "myopic_mces[cpp]"')
+    if not (hasattr(G1, 'mol') and hasattr(G2, 'mol')):
+        raise ValueError('C++ filters need graphs constructed with construct_graph(..., save_mol=True)')
 
     if always_stronger_bound:
             d=mf.filter2(G1.mol,G2.mol)
