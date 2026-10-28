@@ -1,11 +1,10 @@
 name: Build and publish
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'pyproject.toml'
+on: push
+    # branches:
+    #   - main
+    # paths:
+    #   - 'pyproject.toml'
 
 jobs:
   version_check:
