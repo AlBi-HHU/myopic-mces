@@ -10,7 +10,7 @@ version = "2.0.0"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",
@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
              "rdkit >= 2022.09.5",
              "networkx >= 3.0",
-             "pulp[cbc]>=2.7.0,<=3.3.2",
+             "pulp[cbc]>=4.0.0,<5",
              "scipy >= 1.10.1",
              "joblib >= 1.2.0"
 ]

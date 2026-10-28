@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -47,14 +47,14 @@ jobs:
       - name: Build C++ extension wheel
         uses: pypa/cibuildwheel@v4.2.1
         env:
-          CIBW_BUILD: cp310-manylinux_x86_64
+          CIBW_BUILD: cp312-manylinux_x86_64
         with:
           package-dir: cpp
           output-dir: wheels
 
       - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           enable-cache: true
 
       - run: uv sync --group dev

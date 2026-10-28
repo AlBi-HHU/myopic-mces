@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml/badge.svg)](https://github.com/AlBi-HHU/myopic-mces/actions/workflows/test.yml)
 [![PyPI version](https://img.shields.io/pypi/v/myopic-mces)](https://pypi.org/project/myopic-mces/)
-[![Python version](https://img.shields.io/badge/python%3E%3D3.10-blue)](https://www.python.org/)
+[![Python version](https://img.shields.io/badge/python%3E%3D3.12-blue)](https://www.python.org/)
 [![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41467--024--55462--w-blue)](https://doi.org/10.1038/s41467-024-55462-w)
 
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
@@ -82,11 +82,29 @@ Options for the ILP solver
 
 --solver_no_msg                 If set, prevents solver from logging (not available for all solvers)
 
---solver_time_limit_seconds     Set a time limit for the ILP solver. Computations below the threshold are not guaranteed to be exact anymore!
-                                Supported solver is CPLEX_PY, for others, correctness of returned computation
-                                modes cannot be guaranteed. (Experimental)
+--solver_time_limit_seconds     Set a time limit for the ILP solver. Instances that hit the time limit get the
+                                computation mode 5 (solution found, not proven exact) or 6 (no solution found,
+                                distance -1). Only supported for the solvers COIN_CMD and CPLEX_PY.
 
 ```
+
+### Time limit
+
+With `--solver_time_limit_seconds` (or `timeLimit` in `solver_options`), the computation mode of each instance tells whether its distance can be trusted:
+
+| mode | meaning |
+|---|---|
+| 1 | exact distance, proven optimal by the solver |
+| 2 | distance is above the threshold, the threshold is returned |
+| 5 | time limit hit, a solution was found but **not proven exact** (upper bound of the distance) |
+| 6 | time limit hit, no solution found, distance `-1` |
+
+This distinction is only reliable for the solvers **COIN_CMD** and **CPLEX_PY**, so a time limit is rejected for all other solvers.
+For example, CPLEX_CMD reports a time limit without solution as infeasible, which would wrongly be returned as mode 2 (above threshold).
+To use a time limit, switch to one of the supported solvers.
+
+Similarly, solver gap tolerances that are too loose are rejected (`gapAbs` must be below 0.5, `gapRel` must not be above 1e-4),
+as solutions within these tolerances would otherwise be reported as exact (mode 1).
 
 Experimental options for myopic MCES distance computation
 ```
