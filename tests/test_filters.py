@@ -5,6 +5,7 @@ import pandas as pd
 from myopic_mces.graph import construct_graph
 from myopic_mces.filter_MCES import filter0, filter1, filter2
 from myopic_mces import MCES
+# this is testing the python filters
 
 def test_filter0_tl():
     start = time.time()
