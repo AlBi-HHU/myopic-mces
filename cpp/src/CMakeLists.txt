@@ -15,7 +15,7 @@ add_library(mmces_filters SHARED
             filter0.cpp
             filter1.cpp
             filter2.cpp
-            Hungarian.cpp)
+            LAPJV.cpp)
 
 set_target_properties(mmces_filters PROPERTIES PREFIX "")
 

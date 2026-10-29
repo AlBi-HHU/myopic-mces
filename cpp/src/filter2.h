@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cmath>
 #include <GraphMol/ROMol.h>
-#include "Hungarian.h"
 
 using namespace std;
 using namespace RDKit;

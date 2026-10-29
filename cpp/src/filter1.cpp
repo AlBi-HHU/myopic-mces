@@ -1,108 +1,55 @@
 /**
  * Created by Sarah Steinbach.
  */
-#include <string>
 #include <vector>
+#include <algorithm>
+#include <cmath>
 #include <GraphMol/ROMol.h>
-#include <GraphMol/Bond.h>
+#include "atom_types.h"
 #include "filter1.h"
 
 using namespace std;
 using namespace RDKit;
 
-// Vorab-Deklarationen der Hilfsfunktionen
-double getWeightedDegree(ROMol* mol, Atom* atom);
-bool compareByDegree(ROMol* mol, Atom* atom1, Atom* atom2);
-map<string, vector<Atom*>> builtPartitions(ROMol* mol);
+namespace {
 
-// Die Hauptfunktion, die wir später in Python aufrufen
+struct TypedDegree {
+    int type;
+    double degree;
+};
+
+// (atom type, weighted degree) of all atoms, sorted by type ascending, then degree descending
+vector<TypedDegree> typedDegrees(const ROMol* mol, AtomTypeIds& typeIds){
+    vector<TypedDegree> res;
+    res.reserve(mol->getNumAtoms());
+    for (const auto atom : mol->atoms()) {
+        double degree = 0.0;
+        for (const auto bond : mol->atomBonds(atom)) degree += getWeightedBondDegree(bond);
+        res.push_back({typeIds.get(atom), degree});
+    }
+    sort(res.begin(), res.end(), [](const TypedDegree& a, const TypedDegree& b) {
+        return a.type != b.type ? a.type < b.type : a.degree > b.degree;
+    });
+    return res;
+}
+
+} // namespace
+
+// per atom type, atoms are mapped in order of descending weighted degree;
+// unmapped atoms cost their weighted degree
 double applyFilter1(ROMol* mol1, ROMol* mol2) {
-    // Partitionen bauen
-    map<string, vector<Atom*>> partition1 = builtPartitions(mol1);
-    map<string, vector<Atom*>> partition2 = builtPartitions(mol2);
+    AtomTypeIds typeIds;
+    const vector<TypedDegree> d1 = typedDegrees(mol1, typeIds);
+    const vector<TypedDegree> d2 = typedDegrees(mol2, typeIds);
 
-    double tempDifference = 0;
-
-    for (const auto& atomType : partition1) {
-        // Prüfen, ob beide Moleküle den Atomtyp besitzen
-        if (partition2.find(atomType.first) != partition2.end()) {
-            vector<Atom*> atomsSortedByDegree1 = partition1[atomType.first];
-            vector<Atom*> atomsSortedByDegree2 = partition2[atomType.first];
-
-            int minSize = min(atomsSortedByDegree1.size(), atomsSortedByDegree2.size());
-            for (int i = 0; i < minSize; i++) {
-                double degree1 = getWeightedDegree(mol1, atomsSortedByDegree1[i]);
-                double degree2 = getWeightedDegree(mol2, atomsSortedByDegree2[i]);
-                tempDifference += abs(degree1 - degree2);
-            }
-
-            // Wenn ein Molekül mehr Atome dieses Typs hat, Differenzen aufaddieren
-            if (atomsSortedByDegree1.size() < atomsSortedByDegree2.size()) {
-                for (size_t i = minSize; i < atomsSortedByDegree2.size(); i++) {
-                    tempDifference += getWeightedDegree(mol2, atomsSortedByDegree2[i]);
-                }
-            } else {
-                for (size_t i = minSize; i < atomsSortedByDegree1.size(); i++) {
-                    tempDifference += getWeightedDegree(mol1, atomsSortedByDegree1[i]);
-                }
-            }
-        }
-        // Nur Molekül 1 hat diesen Atomtyp
-        else {
-            for (auto atom : partition1[atomType.first]) {
-                tempDifference += getWeightedDegree(mol1, atom);
-            }
-        }
+    double difference = 0.0;
+    size_t i = 0, j = 0;
+    while (i < d1.size() && j < d2.size()) {
+        if (d1[i].type < d2[j].type) difference += d1[i++].degree;
+        else if (d2[j].type < d1[i].type) difference += d2[j++].degree;
+        else difference += abs(d1[i++].degree - d2[j++].degree);
     }
-
-    // Atome aufaddieren, die nur in Molekül 2 vorkommen
-    for (const auto& atomType : partition2) {
-        if (partition1.find(atomType.first) == partition1.end()) {
-            for (auto atom : partition2[atomType.first]) {
-                tempDifference += getWeightedDegree(mol2, atom);
-            }
-        }
-    }
-
-    return tempDifference / 2.0;
-}
-
-// Erstellt die Partitionen für das Molekül
-map<string, vector<Atom*>> builtPartitions(ROMol* mol) {
-    map<string, vector<Atom*>> partition;
-
-    for (auto atom : mol->atoms()) {
-        partition[atom->getSymbol()].push_back(atom);
-    }
-
-    // Sortiert Atome absteigend nach ihrem gewichteten Grad
-    for (auto& pair : partition) {
-        // Wir übergeben 'mol' per Value an das Lambda, statt 'this' zu nutzen
-        sort(pair.second.begin(), pair.second.end(),
-            [mol](Atom* atom1, Atom* atom2) {
-                return compareByDegree(mol, atom1, atom2);
-            });
-    }
-    return partition;
-}
-
-bool compareByDegree(ROMol* mol, Atom* atom1, Atom* atom2) {
-    return getWeightedDegree(mol, atom1) > getWeightedDegree(mol, atom2);
-}
-
-double getWeightedDegree(ROMol* mol, Atom* atom) {
-    double degree = 0.0;
-
-    for (auto& bond : mol->atomBonds(atom)) {
-        Bond::BondType bondType = bond->getBondType();
-
-        switch (bondType) {
-            case Bond::SINGLE:   degree += 1.0; break;
-            case Bond::DOUBLE:   degree += 2.0; break;
-            case Bond::TRIPLE:   degree += 3.0; break;
-            case Bond::AROMATIC: degree += 1.5; break;
-            default:             degree += 0.0; break;
-        }
-    }
-    return degree;
+    for (; i < d1.size(); i++) difference += d1[i].degree;
+    for (; j < d2.size(); j++) difference += d2[j].degree;
+    return difference / 2.0;
 }
