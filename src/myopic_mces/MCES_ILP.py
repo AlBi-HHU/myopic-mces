@@ -7,7 +7,6 @@ Created on Mon Oct  5 17:17:41 2020
 import pulp
 import networkx as nx
 from myopic_mces.filter_MCES import ComputationMode
-import math
 import re
 
 def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
@@ -232,12 +231,6 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
         # hit time limit, no solution
         return result(-1, ComputationMode.TIMEOUT_BOUND.value)       # TODO: now we should use a filter
     elif stats.status == S.Infeasible:
-        # CBC can report a time limit without solution as infeasible
-        # (stats.time is wall time, like `solutionCpuTime` before PuLP 4)
-        if (solver == 'COIN_CMD' and solver_options.get('timeLimit') is not None
-            and math.isclose(stats.time, solver_options.get('timeLimit'), abs_tol=1)
-            and not ILP.objective.value()):
-            return result(-1, ComputationMode.TIMEOUT_BOUND.value)
         return result(threshold, ComputationMode.ABOVE_THRESHOLD.value)
     else:
         raise Exception('unknown ILP status: ', stats.status_str)
