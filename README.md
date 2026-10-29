@@ -7,6 +7,9 @@
 
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
 
+> [!NOTE]
+> **New in version 2.1.0:** much faster computations with the C++ implementation of the lower bounds (default bound ~266× faster than Python, see [benchmarks](benchmarks/README.md)). Install via `pip install myopic-mces[cpp]`.
+
 ## Usage
 
 Input and Output file are in csv format per default. Every line in the input-file is one comparison:
