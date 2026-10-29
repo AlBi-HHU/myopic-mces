@@ -165,6 +165,9 @@ pip install myopic_mces[cplex]  # for newer versions of the CPLEX solver
 pip install myopic_mces[cpp]    # for the fast C++ implementation of the lower bounds
 ```
 
+> [!IMPORTANT]
+> The C++ bounds are built against a specific RDKit version (currently `rdkit==2025.3.4`), and installing the `cpp` extra pins RDKit to that version. Other RDKit versions are not supported at the moment. If you cannot use this RDKit version, use the pure Python implementation (install without the `cpp` extra).
+
 Dependencies can also be installed via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
 Download this repository, navigate to the download location and execute the following commands (replacing `conda` with `mamba` when using mamba):
 ```bash
