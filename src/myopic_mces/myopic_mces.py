@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from myopic_mces.graph import construct_graph
-from myopic_mces.MCES_ILP import MCES_ILP
+from myopic_mces.MCES_ILP import MCES_ILP, check_solver_options, TIME_LIMIT_SOLVERS
 from myopic_mces.filter_MCES import apply_filter, ComputationMode
 from myopic_mces.filter_MCES import apply_CPP_filter, ComputationMode, HAS_CPP
 
@@ -60,6 +60,8 @@ def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options=
             6 : Timelimit reached, no solution found
 
     """
+    # outside of the try blocks below, so that this is not caught with `catch_errors`
+    check_solver_options(solver, solver_options)
     start = time.time()
     # construct graph for both smiles. if we want to calculate the MCES structure mapping, we need save_mol
     if HAS_CPP:
@@ -220,8 +222,10 @@ def main():
     parser.add_argument('--solver_no_msg', action='store_true',
                         help='prevent solver from logging (not available for all solvers)')
     parser.add_argument('--solver_time_limit_seconds', type=float, default=None,
-                        help='EXPERIMENTAL: set a time limit for the ILP solver. Computations below the threshold are not guaranteed to be exact anymore!'
-                         ' Supported solver is CPLEX_PY, for others, correctness cannot be guaranteed.')
+                        help='set a time limit for the ILP solver. Instances that hit the time limit get the computation mode '
+                        f'{ComputationMode.TIMEOUT_ILP_UNPROVEN.value} (solution found, not proven exact) or '
+                        f'{ComputationMode.TIMEOUT_BOUND.value} (no solution found, distance -1). '
+                        f'Only supported for the solvers {", ".join(TIME_LIMIT_SOLVERS)}.')
 
 
     # experimental options
@@ -269,10 +273,8 @@ def main():
                                    structure=args.structure)
     
     # TODO: disclaimer that mapping does not work with hdf5 format yet
-    if (args.solver != 'CPLEX_PY' and args.solver_time_limit_seconds is not None):
-        print('Unsupported solver for timelimit flag, correctness not guaranteed!', file=sys.stderr)
-        if (args.solver == 'COIN_CMD'):
-            additional_mces_options['solver_options']['timeMode'] = 'cpu'
+    if (args.solver == 'COIN_CMD' and args.solver_time_limit_seconds is not None):
+        additional_mces_options['solver_options']['timeMode'] = 'cpu'
 
     if (args.solver_onethreaded):
         additional_mces_options['solver_options']['threads'] = 1
@@ -280,6 +282,12 @@ def main():
         additional_mces_options['solver_options']['msg'] = False
     if (args.solver_time_limit_seconds is not None):
         additional_mces_options['solver_options']['timeLimit'] = args.solver_time_limit_seconds
+
+    # fail before starting the (parallel) computations
+    try:
+        check_solver_options(args.solver, additional_mces_options['solver_options'])
+    except ValueError as e:
+        parser.error(str(e))
 
     if (args.hdf5_mode):
         inputs = hdf5_input(args.input)
