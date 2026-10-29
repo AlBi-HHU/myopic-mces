@@ -6,7 +6,7 @@ build-backend = "scikit_build_core.build"
 # file: pyproject.toml (repo root)
 [project]
 name = "myopic_mces_cpp"
-version = "2.1.0"
+version = "2.2.0"
 description = "Faster bounds (C++) for the myopic-mces package"
 readme = "README.md"
 license = {file = "LICENSE"}
