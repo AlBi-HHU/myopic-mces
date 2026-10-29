@@ -7,6 +7,9 @@
 
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
 
+> [!NOTE]
+> **New in version 2.1.0:** much faster computations with the C++ implementation of the lower bounds (default bound ~266× faster than Python, see [benchmarks](benchmarks/README.md)). Install via `pip install myopic-mces[cpp]`.
+
 ## Usage
 
 Input and Output file are in csv format per default. Every line in the input-file is one comparison:
@@ -32,6 +35,11 @@ pip install myopic-mces
 myopic_mces input-file [output-file]
 
 The `output-file` argument may be omitted when using `--hdf5_mode` (see below).
+```
+
+The lower bounds are also available as a much faster C++ implementation, which is used automatically when installed (see [Recommended settings](#recommended-settings)):
+```bash
+pip install myopic-mces[cpp]
 ```
 
 Alternatively, to install directly from this repository:
@@ -143,7 +151,7 @@ Experimental options for myopic MCES distance computation
 
 ## Recommended settings
 
-To speed up computations and save space, use the variant of the package implemented in C++ (install via `pip install myopic_mces[cpp]`), the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
+To speed up computations and save space, use the variant of the package implemented in C++ (install via `pip install myopic_mces[cpp]`; computes the default lower bound ~266× faster than the Python implementation, see [benchmarks](benchmarks/README.md)), the CPLEX solver (requires `pip install myopic_mces[cplex]` for newer CPLEX versions), HDF5-mode (see [below](#prepare-hdf5-input)) and enable `--choose_bound_dynamically`:
 ```bash
 PATH=$CPLEX_HOME/bin/x86-64_linux/:$PATH python -m myopic_mces.myopic_mces --threshold 10 --solver CPLEX_CMD --solver_onethreaded --solver_no_msg --hdf5_mode input-file.hdf5
 ```
@@ -172,8 +180,11 @@ Optional extras enable additional functionality:
 ```bash
 pip install myopic_mces[hdf5]   # for HDF5 mode
 pip install myopic_mces[cplex]  # for newer versions of the CPLEX solver
-pip install myopic_mces[cpp]    # for the fast filter implementation
+pip install myopic_mces[cpp]    # for the fast C++ implementation of the lower bounds
 ```
+
+> [!IMPORTANT]
+> The C++ bounds are built against a specific RDKit version (currently `rdkit==2025.3.4`), and installing the `cpp` extra pins RDKit to that version. Other RDKit versions are not supported at the moment. If you cannot use this RDKit version, use the pure Python implementation (install without the `cpp` extra).
 
 Dependencies can also be installed via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
 Download this repository, navigate to the download location and execute the following commands (replacing `conda` with `mamba` when using mamba):
