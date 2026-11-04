@@ -8,6 +8,10 @@ on:
         required: True
         type: string
 
+# never re-lock in CI (mcesdb in the `db` extra is an SSH-only git source)
+env:
+  UV_FROZEN: 1
+
 jobs:
   test:
     runs-on: ubuntu-latest
