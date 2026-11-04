@@ -21,7 +21,8 @@ dependencies = [
              "networkx >= 3.0",
              "pulp[cbc]>=4.0.0,<5",
              "scipy >= 1.10.1",
-             "joblib >= 1.2.0"
+             "joblib >= 1.2.0",
+             "tqdm>=4.70.0"
 ]
 
 [project.scripts]
@@ -37,10 +38,15 @@ cplex = [
     "cplex>=22.1.1.2",
     "docplex>=2.32.264",
 ]
-hdf5 = [
-    "h5py>=3.0",
+cpp = [
+    "myopic_mces_cpp==2.2.0"
 ]
-cpp = ["myopic_mces_cpp==2.2.0"]
+hdf5 = [
+    "h5py>=3.11.0",
+]
+db = [
+    "mcesdb",
+]
 
 [dependency-groups]
 dev = [
@@ -48,4 +54,4 @@ dev = [
     "pandas>=2.3.3"
 ]
 [tool.uv.sources]
-myopic-mces-cpp = { path = "cpp" }
+mcesdb = { git = "ssh://git@git.uni-jena.de/bioinf-mit/ms/mces/mces-database.git" }

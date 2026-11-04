@@ -5,7 +5,7 @@ from myopic_mces.graph import construct_graph
 from myopic_mces._cpp import mmces_filters, HAS_CPP, CPP_IMPORT_ERROR
 # this is testing the c++ filters against the same reference values as the python filters
 
-pytestmark = pytest.mark.cpp
+pytestmark = pytest.mark.cpp()
 
 
 def test_cpp_available():

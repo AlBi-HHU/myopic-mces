@@ -8,6 +8,9 @@
 Reference implementation for computing myopic Maximum Common Edge Subgraph (MCES) distances, described in the publication [Coverage bias in small molecule machine learning](https://doi.org/10.1038/s41467-024-55462-w) ([Citation](#citation)).
 
 > [!NOTE]
+> **New in version 2.2.0:** Nextflow scripts and MCESDB integration. Note that the MCESDB is for internal usage and not publicly available yet.
+
+> [!NOTE]
 > **New in version 2.1.0:** much faster computations with the C++ implementation of the lower bounds (default bound ~266× faster than Python, see [benchmarks](benchmarks/README.md)). Install via `pip install myopic-mces[cpp]`.
 
 ## Usage
@@ -219,7 +222,7 @@ Typical runtime is about 10s on Windows 10 with all default options, running on 
 
 ### [`prepare_input.py`](src/myopic_mces/prepare_input.py)
 
-For big datasets it is recommended to divide the input into batches, which can be done with this script:
+For big datasets it is recommended to divide the input into batches, which can be done with this script (HDF5 mode recommended, see below!):
 
 ```bash
 python -m myopic_mces.prepare_input input-file.csv output-folder/ --batch_size 50_000_000
@@ -249,9 +252,17 @@ Instead of preparing the HDF5-file manually, with the additional option to creat
 
 ```bash
 python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode input-smiles.txt output-folder/
+# or for two datasets, dataset_a versus dataset_b:
+python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode --hdf5_extra_input_file dataset-b-smiles.txt dataset-a-smiles.txt output-folder/
 ```
 
 Created batches (`batch$i.hdf5`) are written directly to the `output-folder`.
+
+With `--use_db_lookup`, pairs already known in a database (`mcesdb`, not public yet) are reused and land in `batch0_precomputed.hdf5`; batches to compute start with `batch1.hdf5`. Database connection parameters come from the `PGHOST`/`PGDATABASE`/... environment variables.
+
+```bash
+python -m myopic_mces.prepare_input --batch_size 50_000_000 --hdf5_mode --use_db_lookup --threshold 10 input-smiles.txt output-folder/
+```
 
 ### [`combine_hdf5_batches.py`](src/myopic_mces/combine_hdf5_batches.py)
 
