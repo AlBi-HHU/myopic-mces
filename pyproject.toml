@@ -55,3 +55,4 @@ dev = [
 ]
 [tool.uv.sources]
 mcesdb = { git = "ssh://git@git.uni-jena.de/bioinf-mit/ms/mces/mces-database.git" }
+myopic-mces-cpp = { path = "cpp" }
