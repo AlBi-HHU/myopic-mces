@@ -123,7 +123,7 @@ Experimental options for myopic MCES distance computation
                             for which the MCES distance has been proven exact by the ILP.
 
 --stereo                    Stereochemistry-aware MCES: mapping a tetrahedral centre or a double bond with a different
-                            configuration adds 0.5 to the distance (0.25 if the stereochemistry is specified for only one
+                            configuration adds 1 to the distance (0.5 if the stereochemistry is specified for only one
                             of the two molecules). The configuration is compared under the mapping, and only once enough
                             substituents are mapped. The non-stereo distance is a lower bound.
 

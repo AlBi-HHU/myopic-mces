@@ -24,7 +24,7 @@ def test_output_optional_with_hdf5_mode():
     assert 'the following argument is required: output' not in proc.stderr
 
 
-@pytest.mark.parametrize('stereo, expected', [(False, [0., 0., 1.]), (True, [0.5, 0.5, 1.5])])
+@pytest.mark.parametrize('stereo, expected', [(False, [0., 0., 1.]), (True, [1., 1., 2.])])
 def test_stereo(tmp_path, stereo, expected):
     import pulp
     solver = 'CPLEX_PY' if 'CPLEX_PY' in pulp.listSolvers(onlyAvailable=True) else 'COIN_CMD'

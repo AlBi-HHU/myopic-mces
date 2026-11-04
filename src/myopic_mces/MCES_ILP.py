@@ -125,7 +125,7 @@ def stereo_terms(ILP, G1, G2, y, stereo_cost, stereo_unknown_cost):
     return terms
 
 
-def construct_ILP(G1, G2, threshold, no_ilp_threshold=False, stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
+def construct_ILP(G1, G2, threshold, no_ilp_threshold=False, stereo=False, stereo_cost=1, stereo_unknown_cost=0.5):
     """
      Constructs the ILP for calculating the exact distance between two molecules
 
@@ -277,7 +277,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False, stereo=False, stere
 
 
 def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False, structure=False,
-             stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
+             stereo=False, stereo_cost=1, stereo_unknown_cost=0.5):
     """
      Calculates the exact distance between two molecules using an ILP
 

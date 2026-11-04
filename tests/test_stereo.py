@@ -48,30 +48,30 @@ def test_2d_is_lower_bound(s1, s2):
 
 
 @pytest.mark.parametrize('s1, s2, kwargs, expected', [
-    ('C/C=C/C', 'C/C=C\\C', {}, 0.5),
-    ('C/C=C/C', 'C/C=C\\C', dict(stereo_cost=1.), 1.),
+    ('C/C=C/C', 'C/C=C\\C', {}, 1.),
+    ('C/C=C/C', 'C/C=C\\C', dict(stereo_cost=0.5), 0.5),
     ('C/C=C/C', 'C/C=C/C', {}, 0.),
     ('F/C=C/Cl', 'Cl/C=C/F', {}, 0.),
-    ('C/C=N/O', 'C/C=N\\O', {}, 0.5),                            # oxime
-    ('C/N=N/C', 'C/N=N\\C', {}, 0.5),                            # azo
+    ('C/C=N/O', 'C/C=N\\O', {}, 1.),                            # oxime
+    ('C/N=N/C', 'C/N=N\\C', {}, 1.),                            # azo
     ('CC=CC', 'CC=CC', {}, 0.),
-    ('C/C=C/C', 'CC=CC', {}, 0.25),                            # default: u = s/2
-    ('C/C=C/C', 'CC=CC', dict(stereo_unknown_cost=0.5), 0.5),
-    ('C[C@H](N)O', 'C[C@@H](N)O', {}, 0.5),
+    ('C/C=C/C', 'CC=CC', {}, 0.5),                             # default: u = s/2
+    ('C/C=C/C', 'CC=CC', dict(stereo_unknown_cost=0.25), 0.25),
+    ('C[C@H](N)O', 'C[C@@H](N)O', {}, 1.),
     ('C[C@H](N)O', 'C[C@H](N)O', {}, 0.),
     ('C[C@H](N)O', 'O[C@@H](N)C', {}, 0.),                        # same molecule, different atom order
-    ('C[C@H](N)O', 'CC(N)O', {}, 0.25),
-    ('C[C@H](N)O', 'CC(N)O', dict(stereo_unknown_cost=0.5), 0.5),
-    ('C[C@@H](O)[C@H](C)O', 'C[C@@H](O)[C@@H](C)O', {}, 0.5),   # meso vs (R,R): one of two centres differs
+    ('C[C@H](N)O', 'CC(N)O', {}, 0.5),
+    ('C[C@H](N)O', 'CC(N)O', dict(stereo_unknown_cost=0.25), 0.25),
+    ('C[C@@H](O)[C@H](C)O', 'C[C@@H](O)[C@@H](C)O', {}, 1.),    # meso vs (R,R): one of two centres differs
     ('O[C@H]([C@H](O)C(=O)O)C(=O)O', 'O[C@@H]([C@@H](O)C(=O)O)C(=O)O', {}, 0.),  # meso vs its mirror image
-    ('C/C=C/C[C@H](N)O', 'C/C=C\\C[C@@H](N)O', {}, 1.),
-    ('C[C@H]1CCCC[C@@H]1C', 'C[C@H]1CCCC[C@H]1C', {}, 0.5),      # ring cis/trans, 1,2
-    ('C[C@H]1CC[C@@H](C)CC1', 'C[C@H]1CC[C@H](C)CC1', {}, 0.5),  # ring cis/trans, 1,4
+    ('C/C=C/C[C@H](N)O', 'C/C=C\\C[C@@H](N)O', {}, 2.),
+    ('C[C@H]1CCCC[C@@H]1C', 'C[C@H]1CCCC[C@H]1C', {}, 1.),       # ring cis/trans, 1,2
+    ('C[C@H]1CC[C@@H](C)CC1', 'C[C@H]1CC[C@H](C)CC1', {}, 1.),   # ring cis/trans, 1,4
     # same geometry, different CIP labels: no penalty
     ('N[C@@H](C)C(=O)O', 'N[C@@H](CS)C(=O)O', {}, 1.),
     ('C/C=C(/CC)C', 'C/C=C(/CC)CO', {}, 1.),
     # different geometry, same CIP labels: penalty
-    ('N[C@@H](C)C(=O)O', 'N[C@H](CS)C(=O)O', {}, 1.5),
+    ('N[C@@H](C)C(=O)O', 'N[C@H](CS)C(=O)O', {}, 2.),
     # stereocentre mapped, but not enough substituents: no penalty
     ('C[C@@H](O)CCCCCC', 'C[C@H](N)CCCCCC', {}, 2.),
 ])
@@ -95,20 +95,20 @@ def test_no_stereo_unchanged(s1, s2):
 
 
 def test_threshold_includes_stereo():
-    # 2D distance 0 passes the filters, stereo distance 0.5 is above the threshold
+    # 2D distance 0 passes the filters, stereo distance 1 is above the threshold
     _, d, _, mode = MCES('C/C=C/C', 'C/C=C\\C', threshold=0.25, solver=SOLVER, solver_options=SOLVER_OPTIONS,
                          stereo=True)
     assert mode == ComputationMode.ABOVE_THRESHOLD.value
-    _, d, _, mode = MCES('C/C=C/C', 'C/C=C\\C', threshold=1, solver=SOLVER, solver_options=SOLVER_OPTIONS,
+    _, d, _, mode = MCES('C/C=C/C', 'C/C=C\\C', threshold=2, solver=SOLVER, solver_options=SOLVER_OPTIONS,
                          stereo=True)
-    assert mode == ComputationMode.EXACT.value and d == pytest.approx(0.5)
+    assert mode == ComputationMode.EXACT.value and d == pytest.approx(1.)
 
 
 def test_structure_mapping():
     # structure output still works with stereo penalty variables in the ILP
     _, d, _, mode, mapping = MCES('C[C@H](N)O', 'C[C@@H](N)O', threshold=-1, solver=SOLVER,
                                   solver_options=SOLVER_OPTIONS, stereo=True, structure=True)
-    assert d == pytest.approx(0.5) and len(mapping) == 3
+    assert d == pytest.approx(1.) and len(mapping) == 3
 
 
 @pytest.mark.parametrize('triple', [

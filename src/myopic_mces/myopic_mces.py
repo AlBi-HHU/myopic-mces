@@ -15,7 +15,7 @@ from myopic_mces.filter_MCES import apply_filter, ComputationMode
 def MCES(smiles1, smiles2, threshold=10, i=0, solver='COIN_CMD', solver_options={},
          no_ilp_threshold=False, always_stronger_bound=True, use_bound_zero=False,
          catch_errors=False, structure=False, num_smiles=False,
-         stereo=False, stereo_cost=0.5, stereo_unknown_cost=0.25):
+         stereo=False, stereo_cost=1, stereo_unknown_cost=0.5):
     """
     Calculates the distance between two molecules
 
@@ -250,7 +250,7 @@ def main():
     parser.add_argument('--structure', action='store_true', help='(experimental) if set, saves a mapping of the pairwise MCES structure ' \
                         'to the output. Only works for molecules for which the MCES distance has been proven exact by the ILP.')
     parser.add_argument('--stereo', action='store_true', help='stereochemistry-aware MCES: mapping tetrahedral centres or '
-                        'double bonds with different configurations is penalized (0.5 each, 0.25 if stereochemistry '
+                        'double bonds with different configurations is penalized (1 each, 0.5 if stereochemistry '
                         'is specified for only one of the two molecules)')
     args = parser.parse_args()
 
