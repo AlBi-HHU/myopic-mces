@@ -8,7 +8,7 @@ import numpy as np
 from test_prepare_input import SMILES, _prepare
 
 THRESHOLD = 10.0
-SOLVER = 'PULP_CBC_CMD'
+SOLVER = 'COIN_CMD'
 
 
 def _compute_batches(batch_files):
@@ -46,7 +46,7 @@ def _naive_lookup(tmp_path, pairs):
 
 def test_combine_matches_naive_self_mode(tmp_path):
     batch_files = _prepare(tmp_path, SMILES, batch_size=13)
-    _compute_batches(batch_files)
+    _compute_batches(batch_files) 
     combined = _combine(tmp_path, batch_files)
     with h5py.File(combined, 'r') as f:
         smiles = [s.decode() for s in f['mces_smiles_order'][:]]
