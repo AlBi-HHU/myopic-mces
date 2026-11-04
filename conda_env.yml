@@ -1,12 +1,17 @@
 name: myopic_mces
 channels:
-  - bioconda
   - conda-forge
 dependencies:
   - python=3.12
-  - conda-forge::rdkit==2025.3.4
-  - networkx >= 3.0
-  - joblib >= 1.2.0
+  - networkx>=3.0
+  - joblib>=1.2.0
   - tqdm>=4.70.0
-  - scipy >= 1.10.1
-  - pulp[cbc]>=4.0.0,<5
+  - scipy>=1.10.1
+  - pulp>=4.0.0,<5  # conda-forge pulp already ships CBC
+  - h5py>=3.11.0
+  - pip
+  - pip:
+      # rdkit has to come from PyPI: the myopic_mces_cpp wheels link
+      # against the PyPI rdkit libraries (site-packages/rdkit.libs)
+      - rdkit==2025.3.4
+      - -e .[cpp,hdf5]

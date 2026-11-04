@@ -189,20 +189,22 @@ pip install myopic_mces[cpp]    # for the fast C++ implementation of the lower b
 > [!IMPORTANT]
 > The C++ bounds are built against a specific RDKit version (currently `rdkit==2025.3.4`), and installing the `cpp` extra pins RDKit to that version. Other RDKit versions are not supported at the moment. If you cannot use this RDKit version, use the pure Python implementation (install without the `cpp` extra).
 
-Dependencies can also be installed via [conda](https://docs.conda.io/en/latest/miniconda.html) or [mamba](https://github.com/mamba-org/mamba):
-Download this repository, navigate to the download location and execute the following commands (replacing `conda` with `mamba` when using mamba):
-```bash
-conda env create -f conda_env.yml
-# to activate the created enironment:
-conda activate myopic_mces
-```
-
-Another option is using [uv](https://docs.astral.sh/uv/):
+When working from a clone of this repository (e.g., for development), the recommended method is [uv](https://docs.astral.sh/uv/).
 Download this repository, navigate to the download location and execute the following commands:
 ```bash
 uv sync
+# optionally with extras, e.g.:
+uv sync --extra hdf5 --extra cpp
 # to activate the created environment:
 source .venv/bin/activate
+```
+
+Alternatively, [conda](https://docs.conda.io/en/latest/miniconda.html)/[mamba](https://github.com/mamba-org/mamba) can be used, although `pip` or `uv` are recommended.
+The provided environment includes the `hdf5` and `cpp` extras (RDKit is installed via pip, as required by the C++ bounds):
+```bash
+conda env create -f conda_env.yml   # or: mamba env create -f conda_env.yml
+conda activate myopic_mces
+pip install cplex  # optional, for the CPLEX solver
 ```
 
 A typical installation time should not exceed 5 minutes, mostly depending on the internet connection speed to download all required packages.
