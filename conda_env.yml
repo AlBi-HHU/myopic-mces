@@ -1,12 +1,12 @@
 name: myopic_mces
 channels:
+  - bioconda
   - conda-forge
 dependencies:
-  - python >= 3.6
-  - rdkit >= 2022.09.5
+  - python=3.12
+  - conda-forge::rdkit==2025.3.4
   - networkx >= 3.0
-  - pulp >= 2.7.0
+  - joblib >= 1.2.0
+  - tqdm>=4.70.0
   - scipy >= 1.10.1
-  - pip
-  - pip:
-      - joblib >= 1.2.0
+  - pulp[cbc]>=4.0.0,<5
