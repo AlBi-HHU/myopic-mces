@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 # file: cpp/pyproject.toml
 [project]
 name = "myopic_mces"
-version = "2.2.0"
+version = "2.3.0"
 description = "A package for computation of the myopic MCES distance"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -39,7 +39,7 @@ cplex = [
     "docplex>=2.32.264",
 ]
 cpp = [
-    "myopic_mces_cpp==2.2.0"
+    "myopic_mces_cpp==2.3.0"
 ]
 hdf5 = [
     "h5py>=3.11.0",
