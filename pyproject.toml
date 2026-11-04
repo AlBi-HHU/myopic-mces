@@ -22,8 +22,7 @@ dependencies = [
              "pulp[cbc]>=4.0.0,<5",
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
-             "tqdm>=4.70.0",
-             "h5py>=3.16.0",
+             "tqdm>=4.70.0"
 ]
 
 [project.scripts]
