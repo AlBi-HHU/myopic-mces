@@ -147,6 +147,7 @@ def hdf5_input(file_path):
     print(f'done, took {(time.time() - t0) / 60:.1f}min')
     return zip(*inputs_raw)
 
+# TODO: um structure mapping erweitern
 def hdf5_output(results, file_path, write_times=True, write_modes=True, args={}):
     import h5py
     print('writing hdf5 output')
