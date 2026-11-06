@@ -206,7 +206,7 @@ requires-dist = [
     { name = "h5py", marker = "extra == 'hdf5'", specifier = ">=3.11.0" },
     { name = "joblib", specifier = ">=1.2.0" },
     { name = "mcesdb", marker = "extra == 'db'", git = "ssh://git@git.uni-jena.de/bioinf-mit/ms/mces/mces-database.git" },
-    { name = "myopic-mces-cpp", marker = "extra == 'cpp'", directory = "cpp" },
+    { name = "myopic-mces-cpp", marker = "extra == 'cpp'", specifier = "==2.3.0" },
     { name = "networkx", specifier = ">=3.0" },
     { name = "pulp", extras = ["cbc"], specifier = ">=4.0.0,<5" },
     { name = "rdkit", specifier = ">=2022.9.5" },
@@ -224,18 +224,26 @@ dev = [
 [[package]]
 name = "myopic-mces-cpp"
 version = "2.3.0"
-source = { directory = "cpp" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rdkit" },
 ]
-
-[package.metadata]
-requires-dist = [{ name = "rdkit", specifier = "==2025.3.4" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "cibuildwheel", specifier = ">=2.23.4" },
-    { name = "pytest", specifier = ">=8.3.5" },
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/59/e430439db78d1b114403117cdb96f440e95fafd62120733f6fbd83d7e0df/myopic_mces_cpp-2.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7ed78e6a4663c370c019821925d6c9de8967ec001a4745d6b39dcb28fc1e2ee4", size = 23881, upload-time = "2026-11-05T09:50:20.657Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/4a/040f706f4b2e425675d9361456c7d02864ce5287e15b96da86b3c94fc9b7/myopic_mces_cpp-2.3.0-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:a5f7504b6331694394272c264a2bf3ca068a5c4feb6a54729f82b1a038781ba9", size = 24356, upload-time = "2026-11-05T09:50:21.862Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/a5/1022ae7579e53f3fe51b63c1b185019ff2da9aeb519441fd278b2922c2f9/myopic_mces_cpp-2.3.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a65c7c4b74a47696afa3848145f73c991469688c90adc64c16fc772e601ef63a", size = 30484, upload-time = "2026-11-05T09:50:23.069Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/02/92e5c1240828a655a22e33a060f5808fd2db1f64f110f7bdc960c613b0d2/myopic_mces_cpp-2.3.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:060938cade6903fce0e30888b654e115ebf6f974e750bd2a5032fdbcb113617c", size = 31195, upload-time = "2026-11-05T09:50:24.746Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/6d/fc530708817000984c29114d95c4e6daf4dcb28832f2a926bce63ae0b9bf/myopic_mces_cpp-2.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:7e4655ab2462084d51d1eab60f107be4e063bcd9696ac4d46a5db5865580d857", size = 218558, upload-time = "2026-11-05T09:50:26.051Z" },
+    { url = "https://files.pythonhosted.org/packages/95/bb/4d60d4d715d08f125f45e8b4ab213810730bb5481a5ac6b8cdbfb582828f/myopic_mces_cpp-2.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0232f10611412cc5b66460804913aacd2c31cacc2403fff59d08bea71aa916a5", size = 23880, upload-time = "2026-11-05T09:50:27.299Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/4c/ce02035ae3dc154d51a736551db41ea79b54f0cea9abffa0a97cabfd3e68/myopic_mces_cpp-2.3.0-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:946c544fb5caca7b36b9fb34023184ea4ea77f92771ef092a9855aa4d65cf469", size = 24362, upload-time = "2026-11-05T09:50:28.473Z" },
+    { url = "https://files.pythonhosted.org/packages/de/19/c51ac70d383257461b8cbd59d3be8025b76df118d0e01c7a2e0a30749025/myopic_mces_cpp-2.3.0-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ae2e5dc5a14af27339cf2b0e95178eb98adbed6c630076ae9dfa8a025792df91", size = 30487, upload-time = "2026-11-05T09:50:29.688Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/4b/f8f16d94235175b596569b7c37b2cb02d5a3e0e88b030b55c3e8c4ff73b9/myopic_mces_cpp-2.3.0-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:06778c23b7443aaa284c7cfc280430a629f320b515de3b59bb059fb201fc4fda", size = 31199, upload-time = "2026-11-05T09:50:30.843Z" },
+    { url = "https://files.pythonhosted.org/packages/00/68/77c1a081dd457d46f356982d460d38e4b56bc9992b3eb7d46a2f46d413f8/myopic_mces_cpp-2.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:7ca77847a6f7ac53b0e0cad7308d3bb955253a7b860aff6c15c071f19617edaa", size = 218549, upload-time = "2026-11-05T09:50:32.157Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/57/cc81ed242b9408c33ea310390b98237241d9d4ef0ad46a7a2fc7fa1e8994/myopic_mces_cpp-2.3.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:d7edcc599d8af107f40fbcfbcca2b08cd6bca2cde4619102374e3595e6e55c2d", size = 23899, upload-time = "2026-11-05T09:50:33.684Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/aa/575e362e54684fbc3b7665827942db05f1e6df1928c224c3878ddc029c13/myopic_mces_cpp-2.3.0-cp314-cp314-macosx_11_0_x86_64.whl", hash = "sha256:876dae814f760c185ff355a27854c0e604fc5e7169570e36c45d2c06f5448ccd", size = 24368, upload-time = "2026-11-05T09:50:34.77Z" },
+    { url = "https://files.pythonhosted.org/packages/21/ca/e2e3e80a39ad567dbd5fff029d7e84b6b2f22290998045a584b67e38d3e0/myopic_mces_cpp-2.3.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4ca9d26ed4f1b0ae58217b367d4341b6dc7ea5c45dff6ed5261118452eb0d720", size = 30498, upload-time = "2026-11-05T09:50:36.91Z" },
+    { url = "https://files.pythonhosted.org/packages/18/47/c8b3b25d983eeea95ea87dbb356961d8674430b776608e0718d8e9b716a0/myopic_mces_cpp-2.3.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a3ae94c55dd0e2a1d8e23467b25a28de71ed13454636f653be26b87ae44b603d", size = 31209, upload-time = "2026-11-05T09:50:38.143Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/02/06efc2be229997ccc000c38afb49bf9356219fc4ba6b30d7470be10b899e/myopic_mces_cpp-2.3.0-cp314-cp314-win_amd64.whl", hash = "sha256:53548c494236824dd0b5307d522454a3b738836e5d8c9c8ea08f0e9b3a9cdef8", size = 225854, upload-time = "2026-11-05T09:50:39.485Z" },
 ]
 
 [[package]]
