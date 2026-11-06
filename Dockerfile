@@ -16,7 +16,7 @@ ENV UV_LINK_MODE=copy
 
 COPY . .
 RUN --mount=type=ssh --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --extra db --extra hdf5 --extra cplex
+    uv sync --locked --extra db --extra hdf5 --extra cplex --extra cpp
 
 # `docplex config --upgrade` (see nextflow/modules.nf) switches the pip
 # `cplex` package from its bundled size-limited Community Edition engine to a
@@ -28,6 +28,10 @@ RUN --mount=type=ssh --mount=type=cache,target=/root/.cache/uv \
 ARG CPLEX_PY_VERSION=22.2.0.1
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --python /app/.venv/bin/python "cplex==${CPLEX_PY_VERSION}"
+
+# C++ bounds (prebuilt myopic_mces_cpp wheel from PyPI via `--extra cpp`):
+# fail the build if they don't load, instead of silently using python bounds.
+RUN /app/.venv/bin/python -c "from myopic_mces._cpp import load_cpp_filters; m, e = load_cpp_filters(); assert m is not None, e"
 
 # Singularity/Apptainer runs task processes as the host user, not root, but
 # this venv is built here as root. `docplex config --upgrade` writes into
