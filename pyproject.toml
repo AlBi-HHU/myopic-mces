@@ -20,6 +20,8 @@ dependencies = [
              "rdkit >= 2022.09.5",
              "networkx >= 3.0",
              "pulp[cbc]>=4.0.0,<5",
+             # cbcbox < 2.936 ships a CBC build that can abort in symmetry detection (CbcSymmetry.cpp assertion)
+             "cbcbox>=2.936",
              "scipy >= 1.10.1",
              "joblib >= 1.2.0",
              "tqdm>=4.70.0"
