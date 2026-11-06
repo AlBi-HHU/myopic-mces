@@ -148,6 +148,7 @@ def construct_ILP(G1, G2, threshold, no_ilp_threshold=False):
 # only for these solvers, a time limit without solution can be told apart from an infeasible ILP
 # (e.g. CPLEX_CMD reports both as infeasible, which would wrongly be returned as above threshold)
 TIME_LIMIT_SOLVERS = ('COIN_CMD', 'CPLEX_PY')
+CBC_SOLVERS = ('COIN_CMD', 'PULP_CBC_CMD')
 # distances are multiples of 0.5 (bond orders), so a solution within these gaps is still exact
 # (for the relative gap: as long as the distance is below 5000)
 MAX_GAP_ABS = 0.5
@@ -215,6 +216,15 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
             else:
                 return dist, mode, None
         return dist, mode
+
+    # The CBC build shipped with pulp[cbc] >= 4 (cbcbox, "Devel") can abort with an assertion in its
+    # nauty-based symmetry detection (CbcSymmetry.cpp: numberInPerm==nCol) on some instances,
+    # e.g. CCCCCC(=O)OC vs C1CCCN(CC1)N=O. Disabling orbital branching skips that code; results stay exact.
+    if solver in CBC_SOLVERS:
+        cbc_options = list(solver_options.get('options') or [])
+        if not any(o.lower().startswith('orbitalbranching') for o in cbc_options):
+            cbc_options.append('OrbitalBranching off')
+        solver_options = {**solver_options, 'options': cbc_options}
 
     # solve the ILP and return the correct computation mode
     sol=pulp.getSolver(solver, **solver_options)
