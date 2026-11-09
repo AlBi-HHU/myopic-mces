@@ -168,6 +168,12 @@ def check_solver_options(solver, solver_options):
         raise ValueError(f'gapRel must not be above {MAX_GAP_REL}, otherwise solutions reported as exact may not be exact.')
 
 
+def objective_value(ILP):
+    # pulp returns None for an objective without variables (e.g. C vs C: no bonds, only node variables)
+    value = ILP.objective.value()
+    return float(ILP.objective.constant if value is None else value)
+
+
 def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_threshold=False, structure=False):
     """
      Calculates the exact distance between two molecules using an ILP
@@ -217,6 +223,11 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
                 return dist, mode, None
         return dist, mode
 
+    # Without variables (both molecules have no bonds, e.g. C vs [Mo]) the objective is a constant.
+    # Don't pass such an ILP to a solver: the CBC build from cbcbox segfaults on it (clique strengthening).
+    if not ILP.variables():
+        return result(objective_value(ILP), ComputationMode.EXACT.value)
+
     # The CBC build shipped with pulp[cbc] >= 4 (cbcbox, "Devel") can abort with an assertion in its
     # nauty-based symmetry detection (CbcSymmetry.cpp: numberInPerm==nCol) on some instances,
     # e.g. CCCCCC(=O)OC vs C1CCCN(CC1)N=O. Disabling orbital branching skips that code; results stay exact.
@@ -233,11 +244,11 @@ def MCES_ILP(G1, G2, threshold, solver='COIN_CMD', solver_options={}, no_ilp_thr
 
     # "Optimal (within gap tolerance)" (GapLimit) was reported as optimal before PuLP 4
     if stats.status in (S.Optimal, S.GapLimit) and stats.has_solution:
-        return result(float(ILP.objective.value()), ComputationMode.EXACT.value)
+        return result(objective_value(ILP), ComputationMode.EXACT.value)
     elif stats.status == S.TimeLimit:
         if stats.has_solution:
             # hit time limit, but still found a solution
-            return result(float(ILP.objective.value()), ComputationMode.TIMEOUT_ILP_UNPROVEN.value)
+            return result(objective_value(ILP), ComputationMode.TIMEOUT_ILP_UNPROVEN.value)
         # hit time limit, no solution
         return result(-1, ComputationMode.TIMEOUT_BOUND.value)       # TODO: now we should use a filter
     elif stats.status == S.Infeasible:
