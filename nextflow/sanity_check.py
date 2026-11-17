@@ -27,9 +27,10 @@ def get_mces(s1, s2):
 
 result = False
 with h5py.File(combined_file, "r") as f:
-    if "mces_smiles_order" in f:
+    smiles_key = next((k for k in ("mces_smiles_order", "smiles") if k in f), None)
+    if smiles_key is not None:
         mces = squareform(f["mces"][:])
-        smiles = [s.decode() if isinstance(s, bytes) else s for s in f["mces_smiles_order"][:]]
+        smiles = [s.decode() if isinstance(s, bytes) else s for s in f[smiles_key][:]]
         n = len(smiles)
         tests = []
         for _ in range(n_samples):

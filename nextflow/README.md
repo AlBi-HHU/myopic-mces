@@ -49,6 +49,7 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 | `smiles` | — | One-dataset mode: path to a `.txt` file (one SMILES per line) |
 | `smiles_a` | — | Two-dataset mode: main dataset (passed as `input_file` to `prepare_input`) |
 | `smiles_b` | — | Two-dataset mode: extra dataset (passed as `--hdf5_extra_input_file`) |
+| `hdf5_dir` | — | HDF5-folder mode: folder of small one-dataset HDF5 files (see below) |
 | `threshold` | `10` | Distance threshold for the computation |
 | `batch_size` | `224960000` | Number of instances per HDF5 batch |
 | `use_db_lookup` | `false` | Reuse precomputed distances from mcesdb (needs PG env vars) |
@@ -67,6 +68,21 @@ Defaults are defined in `nextflow.config`; override any on the command line.
 - `combined.hdf5` — combined MCES distances (condensed `mces` for one-dataset
   mode, `(n_b, n_a)` matrix for two-dataset mode).
 - `sanity_report.txt` — `True`/`False` from the sanity check.
+
+## HDF5-folder mode
+
+For a folder of many small HDF5 files (SMILES in `smiles` or `mces_smiles_order`), each needing
+all pairwise distances *within* the file:
+
+```bash
+nextflow run . --hdf5_dir /path/to/folder
+```
+
+Files that already contain `mces` are skipped. The rest are packed (whole files) into batches of
+~`batch_size` pairs, computed with the usual `COMPUTE_BATCH`, and the results are written back
+**in place** into the input files (`mces` condensed, `computation_modes_order`,
+`computation_args` — same layout as `combined.hdf5`). No `combined.hdf5` is produced; the sanity
+check runs on one randomly picked written file. See `src/myopic_mces/hdf5_folder.py`.
 
 ## Using CPLEX as ILP solver
 

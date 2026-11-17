@@ -172,3 +172,42 @@ process WRITE_TO_DB {
         import-mces "${combined}" --format ${format} > db_import.log 2>&1
         """
 }
+
+// ── HDF5 folder mode: PACK / UNPACK ──────────────────────────────────────────
+// PACK groups many small one-dataset HDF5 files (those without 'mces') into
+// compute batches; UNPACK writes each computed batch's results back into its
+// source files *in place* (absolute paths stored in the batch), so both need
+// direct access to the input folder (bound explicitly: it is not a staged
+// input, so singularity.autoMounts doesn't cover it).
+
+process PACK_HDF5_FOLDER {
+    tag 'pack'
+    containerOptions params.hdf5_dir ? "--bind ${file(params.hdf5_dir).toAbsolutePath()}" : ''
+
+    input:
+        val input_dir
+
+    output:
+        path 'out/batch*.hdf5', emit: batches, optional: true
+
+    script:
+        """
+        python3 -m myopic_mces.hdf5_folder pack "${input_dir}" out --batch_size ${params.batch_size}
+        """
+}
+
+process UNPACK_HDF5_FOLDER {
+    tag "${batch.name}"
+    containerOptions params.hdf5_dir ? "--bind ${file(params.hdf5_dir).toAbsolutePath()}" : ''
+
+    input:
+        path batch
+
+    output:
+        stdout
+
+    script:
+        """
+        python3 -m myopic_mces.hdf5_folder unpack "${batch}"
+        """
+}

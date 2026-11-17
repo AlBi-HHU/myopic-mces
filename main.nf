@@ -4,6 +4,7 @@
 // Usage (local checkout):
 //   nextflow run . --smiles smiles.txt                       // one-dataset
 //   nextflow run . --smiles_a a.txt --smiles_b b.txt          // two-dataset
+//   nextflow run . --hdf5_dir folder/                          // many small hdf5s, results in place
 //
 // Usage (directly from GitHub):
 //   nextflow run AlBi-HHU/myopic-mces -r <branch> --smiles smiles.txt
@@ -12,9 +13,12 @@
 
 include { ONE_DATASET } from './nextflow/one_dataset'
 include { TWO_DATASETS } from './nextflow/two_datasets'
+include { HDF5_FOLDER } from './nextflow/hdf5_folder'
 
 workflow {
-    if (params.smiles_a || params.smiles_b) {
+    if (params.hdf5_dir) {
+        HDF5_FOLDER()
+    } else if (params.smiles_a || params.smiles_b) {
         if (!params.smiles_a || !params.smiles_b) {
             exit 1, "Two-dataset mode needs both --smiles_a <file.txt> and --smiles_b <file.txt>"
         }
