@@ -14,8 +14,9 @@ workflow HDF5_FOLDER {
     if (!params.hdf5_dir) {
         exit 1, "Provide --hdf5_dir <folder with .hdf5 files>"
     }
-    batches_ch = PACK_HDF5_FOLDER(file(params.hdf5_dir).toAbsolutePath().toString()).flatten()
-    written_ch = UNPACK_HDF5_FOLDER(COMPUTE_BATCH(batches_ch))
+    script = file("${moduleDir}/hdf5_folder.py")
+    batches_ch = PACK_HDF5_FOLDER(file(params.hdf5_dir).toAbsolutePath().toString(), script).flatten()
+    written_ch = UNPACK_HDF5_FOLDER(COMPUTE_BATCH(batches_ch), script)
 
     // Sanity check on one randomly picked file written in this run
     if (params.sanity_check) {

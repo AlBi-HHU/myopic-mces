@@ -186,13 +186,14 @@ process PACK_HDF5_FOLDER {
 
     input:
         val input_dir
+        path script
 
     output:
         path 'out/batch*.hdf5', emit: batches, optional: true
 
     script:
         """
-        python3 -m myopic_mces.hdf5_folder pack "${input_dir}" out --batch_size ${params.batch_size}
+        python3 "${script}" pack "${input_dir}" out --batch_size ${params.batch_size}
         """
 }
 
@@ -202,12 +203,13 @@ process UNPACK_HDF5_FOLDER {
 
     input:
         path batch
+        path script
 
     output:
         stdout
 
     script:
         """
-        python3 -m myopic_mces.hdf5_folder unpack "${batch}"
+        python3 "${script}" unpack "${batch}"
         """
 }

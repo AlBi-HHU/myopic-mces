@@ -82,7 +82,7 @@ Files that already contain `mces` are skipped. The rest are packed (whole files)
 ~`batch_size` pairs, computed with the usual `COMPUTE_BATCH`, and the results are written back
 **in place** into the input files (`mces` condensed, `computation_modes_order`,
 `computation_args` — same layout as `combined.hdf5`). No `combined.hdf5` is produced; the sanity
-check runs on one randomly picked written file. See `src/myopic_mces/hdf5_folder.py`.
+check runs on one randomly picked written file. See `hdf5_folder.py`.
 
 ## Using CPLEX as ILP solver
 
